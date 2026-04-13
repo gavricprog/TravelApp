@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Frontend build
+frontend/dist/
+frontend/dist-ssr/
+
+# .NET
+**/bin/
+**/obj/
+*.user
+*.suo
+.vs/
+
+# Logs & local
+*.log
+*.local
+.DS_Store
