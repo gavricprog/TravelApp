@@ -34,6 +34,35 @@ public class TravelPlanService : ITravelPlanService
     private static decimal SumExpenses(IEnumerable<Expense> expenses) =>
         expenses.Sum(e => e.Amount);
 
+    private static bool ValidateDestinationRules(
+        string name,
+        string location,
+        DateTime startDate,
+        DateTime endDate,
+        out string? error)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            error = "Destination name is required.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(location))
+        {
+            error = "Destination location is required.";
+            return false;
+        }
+
+        if (startDate.Date > endDate.Date)
+        {
+            error = "Destination start date cannot be after end date.";
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
+
     private static ActivityDto ToActivityDto(Activity a) => new()
     {
         Id = a.Id,
@@ -75,7 +104,17 @@ public class TravelPlanService : ITravelPlanService
             ShareToken = summary.ShareToken,
             Destinations = p.Destinations
                 .OrderBy(d => d.SortOrder)
-                .Select(d => new DestinationDto { Id = d.Id, Name = d.Name, SortOrder = d.SortOrder })
+                .Select(d => new DestinationDto
+                {
+                    Id = d.Id,
+                    Name = d.Name,
+                    Location = d.Location,
+                    StartDate = d.StartDate,
+                    EndDate = d.EndDate,
+                    Description = d.Description,
+                    Notes = d.Notes,
+                    SortOrder = d.SortOrder
+                })
                 .ToList(),
             Activities = p.Activities
                 .OrderBy(a => a.DayDate)
@@ -203,7 +242,17 @@ public class TravelPlanService : ITravelPlanService
             RemainingBudget = p.Budget - total,
             Destinations = p.Destinations
                 .OrderBy(d => d.SortOrder)
-                .Select(d => new DestinationDto { Id = d.Id, Name = d.Name, SortOrder = d.SortOrder })
+                .Select(d => new DestinationDto
+                {
+                    Id = d.Id,
+                    Name = d.Name,
+                    Location = d.Location,
+                    StartDate = d.StartDate,
+                    EndDate = d.EndDate,
+                    Description = d.Description,
+                    Notes = d.Notes,
+                    SortOrder = d.SortOrder
+                })
                 .ToList(),
             ActivitiesByDay = activitiesByDay,
             Expenses = p.Expenses
@@ -230,17 +279,35 @@ public class TravelPlanService : ITravelPlanService
         if (!await _travel.UserOwnsTravelPlanAsync(travelPlanId, userId))
             return (false, "Travel plan not found.", null);
 
+        if (!ValidateDestinationRules(request.Name, request.Location, request.StartDate, request.EndDate, out var err))
+            return (false, err, null);
+
         var order = await _travel.NextDestinationSortOrderAsync(travelPlanId);
         var d = new Destination
         {
             TravelPlanId = travelPlanId,
             Name = request.Name.Trim(),
+            Location = request.Location.Trim(),
+            StartDate = request.StartDate.Date,
+            EndDate = request.EndDate.Date,
+            Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
             SortOrder = order
         };
 
         await _travel.AddDestinationAsync(d);
 
-        return (true, null, new DestinationDto { Id = d.Id, Name = d.Name, SortOrder = d.SortOrder });
+        return (true, null, new DestinationDto
+        {
+            Id = d.Id,
+            Name = d.Name,
+            Location = d.Location,
+            StartDate = d.StartDate,
+            EndDate = d.EndDate,
+            Description = d.Description,
+            Notes = d.Notes,
+            SortOrder = d.SortOrder
+        });
     }
 
     public async Task<(bool ok, string? error, DestinationDto? data)> UpdateDestinationAsync(
@@ -250,9 +317,27 @@ public class TravelPlanService : ITravelPlanService
         if (d == null)
             return (false, "Destination not found.", null);
 
+        if (!ValidateDestinationRules(request.Name, request.Location, request.StartDate, request.EndDate, out var err))
+            return (false, err, null);
+
         d.Name = request.Name.Trim();
+        d.Location = request.Location.Trim();
+        d.StartDate = request.StartDate.Date;
+        d.EndDate = request.EndDate.Date;
+        d.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+        d.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
         await _travel.SaveChangesAsync();
-        return (true, null, new DestinationDto { Id = d.Id, Name = d.Name, SortOrder = d.SortOrder });
+        return (true, null, new DestinationDto
+        {
+            Id = d.Id,
+            Name = d.Name,
+            Location = d.Location,
+            StartDate = d.StartDate,
+            EndDate = d.EndDate,
+            Description = d.Description,
+            Notes = d.Notes,
+            SortOrder = d.SortOrder
+        });
     }
 
     public async Task<(bool ok, string? error)> RemoveDestinationAsync(int destinationId, int userId)

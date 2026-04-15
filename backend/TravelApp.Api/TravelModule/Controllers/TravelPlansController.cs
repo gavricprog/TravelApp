@@ -12,8 +12,13 @@ namespace TravelApp.Api.TravelModule.Controllers;
 public class TravelPlansController : ControllerBase
 {
     private readonly ITravelPlanService _travel;
+    private readonly ITravelPdfService _pdf;
 
-    public TravelPlansController(ITravelPlanService travel) => _travel = travel;
+    public TravelPlansController(ITravelPlanService travel, ITravelPdfService pdf)
+    {
+        _travel = travel;
+        _pdf = pdf;
+    }
 
     private int UserId => User.GetUserId();
 
@@ -30,6 +35,17 @@ public class TravelPlansController : ControllerBase
         if (dto == null)
             return NotFound();
         return Ok(dto);
+    }
+
+    [HttpGet("{id:int}/pdf")]
+    [HttpGet("~/api/plans/{id:int}/pdf")]
+    public async Task<IActionResult> DownloadPdf(int id)
+    {
+        var (ok, error, content, fileName) = await _pdf.GeneratePlanPdfAsync(id, UserId);
+        if (!ok)
+            return NotFound(new { message = error });
+
+        return File(content!, "application/pdf", fileName);
     }
 
     [HttpPost]

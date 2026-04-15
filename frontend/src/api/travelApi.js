@@ -69,6 +69,20 @@ export async function removeChecklistItem(itemId) {
   await client.delete(`/api/travel-plans/checklist/${itemId}`);
 }
 
+export async function downloadTravelPlanPdf(id) {
+  const { data, headers } = await client.get(`/api/plans/${id}/pdf`, {
+    responseType: 'blob',
+  });
+  return { blob: data, fileName: parseFileName(headers['content-disposition']) };
+}
+
+function parseFileName(contentDisposition) {
+  if (!contentDisposition) return null;
+  const match = contentDisposition.match(/filename\*=UTF-8''([^;]+)|filename="?([^"]+)"?/i);
+  const rawName = match?.[1] || match?.[2];
+  return rawName ? decodeURIComponent(rawName) : null;
+}
+
 /** Public read-only view — no Authorization header required on backend. */
 export async function getSharedTravel(token) {
   const { data } = await client.get(`/api/share/${encodeURIComponent(token)}`);

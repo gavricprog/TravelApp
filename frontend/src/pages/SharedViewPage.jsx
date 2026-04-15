@@ -87,9 +87,16 @@ export default function SharedViewPage() {
         <h2 className="section-title">
           <span aria-hidden>📍</span> Destinations
         </h2>
-        <ul className="list-inside list-disc space-y-1 text-slate-700">
+        <ul className="space-y-2 text-slate-700">
           {data.destinations?.map((d) => (
-            <li key={d.id}>{d.name}</li>
+            <li key={d.id} className="rounded-lg bg-slate-50/80 px-3 py-2 text-sm">
+              <p className="font-medium text-slate-900">{d.name}</p>
+              <p className="text-xs text-slate-500">
+                {d.location} · {new Date(d.startDate).toLocaleDateString()} - {new Date(d.endDate).toLocaleDateString()}
+              </p>
+              {d.description && <p className="mt-1 text-slate-600">{d.description}</p>}
+              {d.notes && <p className="mt-1 text-slate-600">Notes: {d.notes}</p>}
+            </li>
           ))}
         </ul>
       </div>

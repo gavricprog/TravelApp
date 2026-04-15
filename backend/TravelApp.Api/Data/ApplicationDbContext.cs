@@ -38,6 +38,11 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<Destination>(e =>
         {
+            e.Property(d => d.Name).HasMaxLength(200);
+            e.Property(d => d.Location).HasMaxLength(300);
+            e.Property(d => d.Description).HasMaxLength(2000);
+            e.Property(d => d.Notes).HasMaxLength(2000);
+
             e.HasOne(d => d.TravelPlan)
                 .WithMany(t => t.Destinations)
                 .HasForeignKey(d => d.TravelPlanId)

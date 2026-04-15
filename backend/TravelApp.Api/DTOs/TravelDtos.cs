@@ -42,6 +42,11 @@ public class DestinationDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string Location { get; set; } = string.Empty;
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public string? Description { get; set; }
+    public string? Notes { get; set; }
     public int SortOrder { get; set; }
 }
 
@@ -49,12 +54,36 @@ public class CreateDestinationRequest
 {
     [Required, MaxLength(200)]
     public string Name { get; set; } = string.Empty;
+
+    [Required, MaxLength(300)]
+    public string Location { get; set; } = string.Empty;
+
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+
+    [MaxLength(2000)]
+    public string? Description { get; set; }
+
+    [MaxLength(2000)]
+    public string? Notes { get; set; }
 }
 
 public class UpdateDestinationRequest
 {
     [Required, MaxLength(200)]
     public string Name { get; set; } = string.Empty;
+
+    [Required, MaxLength(300)]
+    public string Location { get; set; } = string.Empty;
+
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+
+    [MaxLength(2000)]
+    public string? Description { get; set; }
+
+    [MaxLength(2000)]
+    public string? Notes { get; set; }
 }
 
 public class ActivityDto

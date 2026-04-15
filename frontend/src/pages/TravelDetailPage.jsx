@@ -28,6 +28,17 @@ function activityPayloadFromForm(fields) {
   };
 }
 
+function destinationPayloadFromForm(fields) {
+  return {
+    name: fields.name,
+    location: fields.location,
+    startDate: fields.startDate,
+    endDate: fields.endDate,
+    description: fields.description?.trim() ? fields.description.trim() : null,
+    notes: fields.notes?.trim() ? fields.notes.trim() : null,
+  };
+}
+
 export default function TravelDetailPage() {
   const { id } = useParams();
   const travelId = Number(id);
@@ -40,8 +51,18 @@ export default function TravelDetailPage() {
   const [editBudget, setEditBudget] = useState('');
 
   const [destName, setDestName] = useState('');
+  const [destLocation, setDestLocation] = useState('');
+  const [destStartDate, setDestStartDate] = useState('');
+  const [destEndDate, setDestEndDate] = useState('');
+  const [destDescription, setDestDescription] = useState('');
+  const [destNotes, setDestNotes] = useState('');
   const [editingDestId, setEditingDestId] = useState(null);
   const [destEditName, setDestEditName] = useState('');
+  const [destEditLocation, setDestEditLocation] = useState('');
+  const [destEditStartDate, setDestEditStartDate] = useState('');
+  const [destEditEndDate, setDestEditEndDate] = useState('');
+  const [destEditDescription, setDestEditDescription] = useState('');
+  const [destEditNotes, setDestEditNotes] = useState('');
 
   const [actDate, setActDate] = useState('');
   const [actTitle, setActTitle] = useState('');
@@ -57,6 +78,7 @@ export default function TravelDetailPage() {
   const [expDesc, setExpDesc] = useState('');
   const [expCategory, setExpCategory] = useState('General');
   const [checkText, setCheckText] = useState('');
+  const [isPdfLoading, setIsPdfLoading] = useState(false);
 
   const load = async () => {
     try {
@@ -99,9 +121,29 @@ export default function TravelDetailPage() {
 
   const addDest = async (e) => {
     e.preventDefault();
+    if (new Date(destStartDate) > new Date(destEndDate)) {
+      setError('Destination start date cannot be after end date.');
+      return;
+    }
+
     try {
-      await travelApi.addDestination(travelId, { name: destName });
+      await travelApi.addDestination(
+        travelId,
+        destinationPayloadFromForm({
+          name: destName,
+          location: destLocation,
+          startDate: destStartDate,
+          endDate: destEndDate,
+          description: destDescription,
+          notes: destNotes,
+        })
+      );
       setDestName('');
+      setDestLocation('');
+      setDestStartDate('');
+      setDestEndDate('');
+      setDestDescription('');
+      setDestNotes('');
       await load();
     } catch (err) {
       setError(err.response?.data?.message || 'Could not add destination.');
@@ -110,8 +152,23 @@ export default function TravelDetailPage() {
 
   const saveDestEdit = async () => {
     if (!editingDestId) return;
+    if (new Date(destEditStartDate) > new Date(destEditEndDate)) {
+      setError('Destination start date cannot be after end date.');
+      return;
+    }
+
     try {
-      await travelApi.updateDestination(editingDestId, { name: destEditName });
+      await travelApi.updateDestination(
+        editingDestId,
+        destinationPayloadFromForm({
+          name: destEditName,
+          location: destEditLocation,
+          startDate: destEditStartDate,
+          endDate: destEditEndDate,
+          description: destEditDescription,
+          notes: destEditNotes,
+        })
+      );
       setEditingDestId(null);
       await load();
     } catch (err) {
@@ -196,6 +253,27 @@ export default function TravelDetailPage() {
       await load();
     } catch {
       setError('Could not create share link.');
+    }
+  };
+
+  const downloadPdf = async () => {
+    try {
+      setIsPdfLoading(true);
+      const { blob, fileName } = await travelApi.downloadTravelPlanPdf(travelId);
+      const downloadName = fileName || `travel-plan-${travelId}.pdf`;
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = downloadName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not generate PDF report.');
+    } finally {
+      setIsPdfLoading(false);
     }
   };
 
@@ -300,6 +378,9 @@ export default function TravelDetailPage() {
             <button type="button" className="btn-secondary" onClick={share}>
               Copy share link
             </button>
+            <button type="button" className="btn-secondary" onClick={downloadPdf} disabled={isPdfLoading}>
+              {isPdfLoading ? 'Generating PDF…' : 'Download PDF'}
+            </button>
             {plan.shareToken && (
               <span className="text-xs font-medium text-teal-700">Sharing is on — link copied uses latest token.</span>
             )}
@@ -311,28 +392,115 @@ export default function TravelDetailPage() {
         <h2 className="section-title">
           <span aria-hidden>📍</span> Destinations
         </h2>
-        <form className="mb-4 flex flex-col gap-3 sm:flex-row" onSubmit={addDest}>
-          <input
-            className="field flex-1 !mb-0"
-            placeholder="City or place"
-            value={destName}
-            onChange={(e) => setDestName(e.target.value)}
-            required
-          />
-          <button type="submit" className="btn-primary shrink-0">
-            Add
-          </button>
+        <form className="mb-6 grid gap-4 sm:grid-cols-2" onSubmit={addDest}>
+          <div>
+            <label className="field-label">Name</label>
+            <input
+              className="field"
+              placeholder="Destination name"
+              value={destName}
+              onChange={(e) => setDestName(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="field-label">Location</label>
+            <input
+              className="field"
+              placeholder="City, country, or place"
+              value={destLocation}
+              onChange={(e) => setDestLocation(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="field-label">Start date</label>
+            <input
+              className="field"
+              type="date"
+              value={destStartDate}
+              onChange={(e) => setDestStartDate(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="field-label">End date</label>
+            <input
+              className="field"
+              type="date"
+              value={destEndDate}
+              onChange={(e) => setDestEndDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="field-label">Description (optional)</label>
+            <textarea
+              className="field"
+              rows="3"
+              value={destDescription}
+              onChange={(e) => setDestDescription(e.target.value)}
+              maxLength={2000}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="field-label">Notes (optional)</label>
+            <textarea
+              className="field"
+              rows="3"
+              value={destNotes}
+              onChange={(e) => setDestNotes(e.target.value)}
+              maxLength={2000}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <button type="submit" className="btn-primary">
+              Add destination
+            </button>
+          </div>
         </form>
         {plan.destinations?.length === 0 && <p className="text-sm text-slate-500">No destinations yet.</p>}
         <ul className="divide-y divide-slate-100">
           {plan.destinations?.map((d) => (
             <li key={d.id} className="flex flex-col gap-2 py-3 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
               {editingDestId === d.id ? (
-                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-end">
+                <div className="grid flex-1 gap-2 sm:grid-cols-2">
+                  <input className="field" value={destEditName} onChange={(e) => setDestEditName(e.target.value)} required />
                   <input
-                    className="field flex-1 !mb-0"
-                    value={destEditName}
-                    onChange={(e) => setDestEditName(e.target.value)}
+                    className="field"
+                    value={destEditLocation}
+                    onChange={(e) => setDestEditLocation(e.target.value)}
+                    required
+                  />
+                  <input
+                    className="field"
+                    type="date"
+                    value={destEditStartDate}
+                    onChange={(e) => setDestEditStartDate(e.target.value)}
+                    required
+                  />
+                  <input
+                    className="field"
+                    type="date"
+                    value={destEditEndDate}
+                    onChange={(e) => setDestEditEndDate(e.target.value)}
+                    required
+                  />
+                  <textarea
+                    className="field sm:col-span-2"
+                    rows="2"
+                    value={destEditDescription}
+                    onChange={(e) => setDestEditDescription(e.target.value)}
+                    maxLength={2000}
+                    placeholder="Description (optional)"
+                  />
+                  <textarea
+                    className="field sm:col-span-2"
+                    rows="2"
+                    value={destEditNotes}
+                    onChange={(e) => setDestEditNotes(e.target.value)}
+                    maxLength={2000}
+                    placeholder="Notes (optional)"
                   />
                   <div className="flex gap-2">
                     <button type="button" className="btn-primary !py-2" onClick={saveDestEdit}>
@@ -349,7 +517,14 @@ export default function TravelDetailPage() {
                 </div>
               ) : (
                 <>
-                  <span className="font-medium text-slate-800">{d.name}</span>
+                  <div>
+                    <p className="font-medium text-slate-800">{d.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {d.location} · {new Date(d.startDate).toLocaleDateString()} - {new Date(d.endDate).toLocaleDateString()}
+                    </p>
+                    {d.description && <p className="text-sm text-slate-600">{d.description}</p>}
+                    {d.notes && <p className="text-sm text-slate-600">Notes: {d.notes}</p>}
+                  </div>
                   <div className="flex gap-1">
                     <button
                       type="button"
@@ -357,6 +532,11 @@ export default function TravelDetailPage() {
                       onClick={() => {
                         setEditingDestId(d.id);
                         setDestEditName(d.name);
+                        setDestEditLocation(d.location || '');
+                        setDestEditStartDate(d.startDate?.slice(0, 10) || '');
+                        setDestEditEndDate(d.endDate?.slice(0, 10) || '');
+                        setDestEditDescription(d.description || '');
+                        setDestEditNotes(d.notes || '');
                       }}
                     >
                       Edit
