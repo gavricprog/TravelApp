@@ -28,6 +28,11 @@ export async function regenerateShareToken(id) {
   return data;
 }
 
+export async function getPlanShare(id) {
+  const { data } = await client.get(`/api/plans/${id}/share`);
+  return data;
+}
+
 export async function addDestination(travelPlanId, payload) {
   const { data } = await client.post(`/api/travel-plans/${travelPlanId}/destinations`, payload);
   return data;

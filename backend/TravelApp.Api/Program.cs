@@ -31,6 +31,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITravelRepository, TravelRepository>();
 builder.Services.AddScoped<ITravelPlanService, TravelPlanService>();
 builder.Services.AddScoped<ITravelPdfService, TravelPdfService>();
+builder.Services.AddScoped<IQrCodeService, QrCodeService>();
 
 // Finance module (expenses only — keeps "microservice" boundary in folders)
 builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();

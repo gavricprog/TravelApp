@@ -167,3 +167,10 @@ public class ShareLinkResponse
 {
     public string ShareToken { get; set; } = string.Empty;
 }
+
+public class PlanShareResponse
+{
+    public string ShareUrl { get; set; } = string.Empty;
+    public string QrCode { get; set; } = string.Empty;
+    public string AccessLevel { get; set; } = "VIEW";
+}

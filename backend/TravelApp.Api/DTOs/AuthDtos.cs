@@ -7,7 +7,9 @@ public class RegisterRequest
     [Required, EmailAddress]
     public string Email { get; set; } = string.Empty;
 
-    [Required, MinLength(6)]
+    [Required, MinLength(8), MaxLength(128)]
+    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$",
+        ErrorMessage = "Password must contain upper/lowercase letters and at least one number.")]
     public string Password { get; set; } = string.Empty;
 }
 
@@ -16,7 +18,7 @@ public class LoginRequest
     [Required, EmailAddress]
     public string Email { get; set; } = string.Empty;
 
-    [Required]
+    [Required, MinLength(8), MaxLength(128)]
     public string Password { get; set; } = string.Empty;
 }
 

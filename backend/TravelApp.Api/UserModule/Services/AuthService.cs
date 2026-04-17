@@ -17,13 +17,14 @@ public class AuthService : IAuthService
 
     public async Task<(bool ok, string? error, AuthResponse? data)> RegisterAsync(RegisterRequest request)
     {
-        var existing = await _users.GetByEmailAsync(request.Email);
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var existing = await _users.GetByEmailAsync(normalizedEmail);
         if (existing != null)
             return (false, "Email already registered.", null);
 
         var user = new User
         {
-            Email = request.Email.Trim().ToLowerInvariant(),
+            Email = normalizedEmail,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = UserRole.User
         };

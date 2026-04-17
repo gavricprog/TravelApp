@@ -11,6 +11,7 @@ public interface ITravelPlanService
     Task<(bool ok, string? error)> DeleteAsync(int travelPlanId, int userId);
 
     Task<(bool ok, string? error, ShareLinkResponse? data)> RegenerateShareTokenAsync(int travelPlanId, int userId);
+    Task<(bool ok, string? error, PlanShareResponse? data)> GetShareDetailsAsync(int travelPlanId, int userId, string baseUrl);
     Task<SharedTravelViewDto?> GetSharedViewAsync(string shareToken);
 
     Task<(bool ok, string? error, DestinationDto? data)> AddDestinationAsync(int travelPlanId, int userId, CreateDestinationRequest request);

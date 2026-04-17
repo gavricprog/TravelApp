@@ -13,11 +13,13 @@ public class TravelPlansController : ControllerBase
 {
     private readonly ITravelPlanService _travel;
     private readonly ITravelPdfService _pdf;
+    private readonly IConfiguration _config;
 
-    public TravelPlansController(ITravelPlanService travel, ITravelPdfService pdf)
+    public TravelPlansController(ITravelPlanService travel, ITravelPdfService pdf, IConfiguration config)
     {
         _travel = travel;
         _pdf = pdf;
+        _config = config;
     }
 
     private int UserId => User.GetUserId();
@@ -80,6 +82,20 @@ public class TravelPlansController : ControllerBase
     public async Task<ActionResult<ShareLinkResponse>> RegenerateShare(int id)
     {
         var (ok, error, data) = await _travel.RegenerateShareTokenAsync(id, UserId);
+        if (!ok)
+            return NotFound(new { message = error });
+        return Ok(data);
+    }
+
+    [HttpGet("~/api/plans/{id:int}/share")]
+    public async Task<ActionResult<PlanShareResponse>> GetShare(int id)
+    {
+        var frontendUrl = _config["Frontend:BaseUrl"];
+        var baseUrl = string.IsNullOrWhiteSpace(frontendUrl)
+            ? "http://localhost:5173"
+            : frontendUrl;
+
+        var (ok, error, data) = await _travel.GetShareDetailsAsync(id, UserId, baseUrl);
         if (!ok)
             return NotFound(new { message = error });
         return Ok(data);

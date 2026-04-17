@@ -9,8 +9,13 @@ namespace TravelApp.Api.TravelModule.Services;
 public class TravelPlanService : ITravelPlanService
 {
     private readonly ITravelRepository _travel;
+    private readonly IQrCodeService _qrCode;
 
-    public TravelPlanService(ITravelRepository travel) => _travel = travel;
+    public TravelPlanService(ITravelRepository travel, IQrCodeService qrCode)
+    {
+        _travel = travel;
+        _qrCode = qrCode;
+    }
 
     /// <summary>Professor-facing rules: end after start, budget non-negative.</summary>
     private static bool ValidatePlanRules(DateTime start, DateTime end, decimal budget, out string? error)
@@ -210,6 +215,32 @@ public class TravelPlanService : ITravelPlanService
         await _travel.SaveChangesAsync();
 
         return (true, null, new ShareLinkResponse { ShareToken = plan.ShareToken });
+    }
+
+    public async Task<(bool ok, string? error, PlanShareResponse? data)> GetShareDetailsAsync(
+        int travelPlanId,
+        int userId,
+        string baseUrl)
+    {
+        var plan = await _travel.GetOwnedAsync(travelPlanId, userId, asTracking: true);
+        if (plan == null)
+            return (false, "Travel plan not found.", null);
+
+        if (string.IsNullOrWhiteSpace(plan.ShareToken))
+        {
+            plan.ShareToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
+            await _travel.SaveChangesAsync();
+        }
+
+        var shareUrl = $"{baseUrl.TrimEnd('/')}/share/{plan.ShareToken}";
+        var qrCode = _qrCode.GeneratePngDataUrl(shareUrl);
+
+        return (true, null, new PlanShareResponse
+        {
+            ShareUrl = shareUrl,
+            QrCode = qrCode,
+            AccessLevel = "VIEW"
+        });
     }
 
     public async Task<SharedTravelViewDto?> GetSharedViewAsync(string shareToken)

@@ -79,6 +79,8 @@ export default function TravelDetailPage() {
   const [expCategory, setExpCategory] = useState('General');
   const [checkText, setCheckText] = useState('');
   const [isPdfLoading, setIsPdfLoading] = useState(false);
+  const [shareData, setShareData] = useState(null);
+  const [shareMessage, setShareMessage] = useState('');
 
   const load = async () => {
     try {
@@ -97,6 +99,7 @@ export default function TravelDetailPage() {
 
   useEffect(() => {
     load();
+    loadShare();
   }, [travelId]);
 
   const remaining = useMemo(() => {
@@ -244,16 +247,45 @@ export default function TravelDetailPage() {
     }
   };
 
-  const share = async () => {
+  const loadShare = async () => {
     try {
-      const { shareToken } = await travelApi.regenerateShareToken(travelId);
-      const url = `${window.location.origin}/share/${shareToken}`;
-      await navigator.clipboard.writeText(url);
-      alert(`View-only link copied:\n${url}`);
-      await load();
+      const data = await travelApi.getPlanShare(travelId);
+      setShareData(data);
+      setShareMessage('');
     } catch {
-      setError('Could not create share link.');
+      setError('Could not load share details.');
     }
+  };
+
+  const regenerateShare = async () => {
+    try {
+      await travelApi.regenerateShareToken(travelId);
+      await load();
+      await loadShare();
+      setShareMessage('Share token regenerated.');
+    } catch {
+      setError('Could not regenerate share token.');
+    }
+  };
+
+  const copyShareLink = async () => {
+    if (!shareData?.shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareData.shareUrl);
+      setShareMessage('Share link copied to clipboard.');
+    } catch {
+      setError('Could not copy share link.');
+    }
+  };
+
+  const downloadQrCode = () => {
+    if (!shareData?.qrCode) return;
+    const a = document.createElement('a');
+    a.href = shareData.qrCode;
+    a.download = `travel-plan-${travelId}-qr.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   const downloadPdf = async () => {
@@ -375,17 +407,55 @@ export default function TravelDetailPage() {
             <button type="submit" className="btn-primary">
               Save changes
             </button>
-            <button type="button" className="btn-secondary" onClick={share}>
-              Copy share link
-            </button>
             <button type="button" className="btn-secondary" onClick={downloadPdf} disabled={isPdfLoading}>
               {isPdfLoading ? 'Generating PDF…' : 'Download PDF'}
             </button>
-            {plan.shareToken && (
-              <span className="text-xs font-medium text-teal-700">Sharing is on — link copied uses latest token.</span>
-            )}
           </div>
         </form>
+      </div>
+
+      <div className="surface">
+        <h2 className="section-title">
+          <span aria-hidden>🔗</span> Share
+        </h2>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className="btn-secondary" onClick={regenerateShare}>
+              Regenerate share token
+            </button>
+            <button type="button" className="btn-primary" onClick={copyShareLink} disabled={!shareData?.shareUrl}>
+              Copy link
+            </button>
+            <button type="button" className="btn-secondary" onClick={downloadQrCode} disabled={!shareData?.qrCode}>
+              Download QR
+            </button>
+            {shareData?.accessLevel && (
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Access: {shareData.accessLevel}
+              </span>
+            )}
+          </div>
+
+          <div className="flex justify-center">
+            {shareData?.qrCode ? (
+              <img
+                src={shareData.qrCode}
+                alt="Travel plan share QR code"
+                className="h-56 w-56 rounded-xl border border-slate-200 bg-white p-3 shadow-soft"
+              />
+            ) : (
+              <div className="h-56 w-56 rounded-xl border border-dashed border-slate-300 bg-slate-50" />
+            )}
+          </div>
+
+          <div className="rounded-lg bg-slate-50 px-3 py-2 text-center text-sm text-slate-700 break-all">
+            {shareData?.shareUrl || 'Share link unavailable.'}
+          </div>
+
+          {shareMessage && (
+            <div className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-800">{shareMessage}</div>
+          )}
+        </div>
       </div>
 
       <div className="surface">
