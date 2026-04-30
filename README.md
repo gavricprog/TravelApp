@@ -2,7 +2,13 @@
 
 Student-friendly full stack app: **ASP.NET Core 8 Web API** + **SQL Server (EF Core)** + **React (Vite)** with **JWT** auth and a simple **USER / ADMIN** role claim (new accounts register as `USER`).
 
-Architecture stays intentionally small: **Controllers → Services → Repositories**, with three **logical “microservice” folders** on the backend (`UserModule`, `TravelModule`, `FinanceModule`) — not separate deployable services.
+Architecture stays intentionally small and clear: **Controllers → Services → Repositories**, with three logical service boundaries on the backend:
+
+- `UserModule` / **UserService** — authentication, JWT, users, admin role checks
+- `TravelModule` / **TravelService** — plans, destinations, activities, checklist, sharing, PDF/QR features
+- `FinanceModule` / **FinanceService** — expenses and finance operations
+
+The current backend is a **modular monolith with microservice-ready boundaries**. It is not a full Microsoft Service Fabric deployment yet, but each backend service boundary is documented and designed so it can be moved into a separate Service Fabric service later.
 
 ---
 
@@ -31,8 +37,8 @@ dotnet restore
 dotnet run
 ```
 
-- HTTP: `http://localhost:5230`
-- Swagger UI (Development): `http://localhost:5230/swagger`
+- HTTP: `http://localhost:5000`
+- Swagger UI (Development): `http://localhost:5000/swagger`
 
 On startup the API runs **`Database.Migrate()`**, so the database is created/updated automatically from the `Migrations` folder.
 
@@ -73,7 +79,13 @@ Entities live in `backend/TravelApp.Api/Models/`:
 
 Path: `frontend`
 
-API calls are **only** in `src/api/*.js` (not inside components), as requested. Vite **proxies** `/api` → `http://localhost:5230` (see `vite.config.js`).
+API calls are **only** in `src/api/*.js` (not inside components), as requested. The API base URL is configured through Vite environment variables.
+
+Create or update `frontend/.env`:
+
+```env
+VITE_API_BASE_URL=http://localhost:5000
+```
 
 ### Run
 
@@ -84,6 +96,14 @@ npm run dev
 ```
 
 Open `http://localhost:5173`
+
+### Frontend structure
+
+- `src/pages/` — route-level pages
+- `src/components/` — reusable UI sections (`TripSummaryForm`, `DestinationsSection`, `ActivitiesSection`, `ExpensesSection`, `ChecklistSection`)
+- `src/api/` — HTTP service modules and axios client
+- `src/models/` — frontend model shapes and normalizers
+- `src/context/` — auth and notification state
 
 ### Pages
 
@@ -139,21 +159,34 @@ Travel app/
     Models/               # EF entities
     DTOs/                 # Request/response shapes
     Infrastructure/       # JWT settings, claim helper
-    UserModule/           # Auth controllers/services/repos
-    TravelModule/         # Plans, share, destinations, activities, checklist
-    FinanceModule/        # Expenses
+    UserModule/           # UserService boundary
+    TravelModule/         # TravelService boundary
+    FinanceModule/        # FinanceService boundary
     Migrations/           # EF migrations
   frontend/
     src/
       api/                # axios + API functions
+      components/         # reusable UI sections
       context/            # AuthContext
+      models/             # frontend domain models
       pages/
+  docs/
+    architecture.md
+    use-case.md
 ```
+
+---
+
+## Architecture and academic deliverables
+
+- System architecture: `docs/architecture.md`
+- Use case diagram: `docs/use-case.md`
+- Service Fabric migration note: the current implementation keeps User, Travel, and Finance as explicit logical service boundaries. A future Service Fabric version should split those modules into separate deployable services and add the required stateless/stateful Service Fabric hosts.
 
 ---
 
 ## Troubleshooting
 
-- **502 / proxy errors**: start the API first on port **5230** (or change `vite.config.js` `proxy.target`).
+- **Network errors from frontend**: start the API first on port **5000** and verify `frontend/.env` has `VITE_API_BASE_URL=http://localhost:5000`.
 - **SQL connection errors**: install LocalDB or point `DefaultConnection` at your SQL Server instance.
 - **HTTPS dev cert**: if you call the API directly over HTTPS, trust the dev cert: `dotnet dev-certs https --trust`.

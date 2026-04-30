@@ -1,11 +1,19 @@
 import axios from 'axios';
 
-// Requests go to same origin; Vite proxies /api → ASP.NET (see vite.config.js).
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+
+if (!apiBaseUrl) {
+  throw new Error('Missing VITE_API_BASE_URL. Add it to frontend/.env before starting the app.');
+}
+
 const client = axios.create({
-  baseURL: '/',
+  baseURL: apiBaseUrl,
 });
 
-// Attach JWT from localStorage for every call (except login/register which clear it).
+function dispatchApiEvent(name, detail) {
+  window.dispatchEvent(new CustomEvent(name, { detail }));
+}
+
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -13,5 +21,20 @@ client.interceptors.request.use((config) => {
   }
   return config;
 });
+
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const message = error.response?.data?.message || error.message || 'Request failed.';
+
+    if (status === 401) {
+      dispatchApiEvent('auth:unauthorized', { message: 'Your session expired. Please log in again.' });
+    }
+
+    dispatchApiEvent('api:error', { message, status });
+    return Promise.reject(error);
+  }
+);
 
 export default client;

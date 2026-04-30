@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import * as adminApi from '../api/adminApi';
+import * as adminService from '../api/adminService';
 import * as travelApi from '../api/travelApi';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useNotifications } from '../context/NotificationContext.jsx';
+import { validateDateRange, validateNonNegativeNumber } from '../utils/validation.js';
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { notifySuccess, notifyError } = useNotifications();
   const [adminStats, setAdminStats] = useState(null);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminPlans, setAdminPlans] = useState([]);
+  const [adminLoading, setAdminLoading] = useState(false);
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -32,28 +39,101 @@ export default function DashboardPage() {
     load();
   }, []);
 
+  const loadAdminData = async () => {
+    setAdminLoading(true);
+    try {
+      const [stats, users, allPlans] = await Promise.all([
+        adminApi.getAdminStats(),
+        adminService.getUsers(),
+        adminService.getAllPlans(),
+      ]);
+      setAdminStats(stats);
+      setAdminUsers(users);
+      setAdminPlans(allPlans);
+    } catch (err) {
+      setAdminStats(null);
+      setAdminUsers([]);
+      setAdminPlans([]);
+      notifyError(err.response?.data?.message || 'Could not load admin data.');
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (user?.role !== 'Admin') {
       setAdminStats(null);
+      setAdminUsers([]);
+      setAdminPlans([]);
       return;
     }
     let cancelled = false;
-    adminApi
-      .getAdminStats()
-      .then((s) => {
-        if (!cancelled) setAdminStats(s);
+    setAdminLoading(true);
+    Promise.all([adminApi.getAdminStats(), adminService.getUsers(), adminService.getAllPlans()])
+      .then(([stats, users, allPlans]) => {
+        if (cancelled) return;
+        setAdminStats(stats);
+        setAdminUsers(users);
+        setAdminPlans(allPlans);
       })
       .catch(() => {
-        if (!cancelled) setAdminStats(null);
+        if (cancelled) return;
+        setAdminStats(null);
+        setAdminUsers([]);
+        setAdminPlans([]);
+      })
+      .finally(() => {
+        if (!cancelled) setAdminLoading(false);
       });
     return () => {
       cancelled = true;
     };
   }, [user?.role]);
 
+  const changeUserRole = async (targetUser) => {
+    const nextRole = targetUser.role === 'Admin' ? 'User' : 'Admin';
+    try {
+      await adminService.updateUserRole(targetUser.id, nextRole);
+      await loadAdminData();
+      notifySuccess(`${targetUser.email} is now ${nextRole}.`);
+    } catch (err) {
+      notifyError(err.response?.data?.message || 'Could not update user role.');
+    }
+  };
+
+  const deleteAdminUser = async (targetUser) => {
+    if (targetUser.id === user?.userId) return;
+    if (!window.confirm(`Delete user ${targetUser.email}? This also deletes their travel plans.`)) return;
+    try {
+      await adminService.deleteUser(targetUser.id);
+      await loadAdminData();
+      notifySuccess('User deleted successfully.');
+    } catch (err) {
+      notifyError(err.response?.data?.message || 'Could not delete user.');
+    }
+  };
+
+  const deleteAnyPlan = async (plan) => {
+    if (!window.confirm(`Delete travel plan "${plan.title}" owned by ${plan.ownerEmail}?`)) return;
+    try {
+      await adminService.deletePlan(plan.id);
+      await Promise.all([load(), loadAdminData()]);
+      notifySuccess('Travel plan deleted successfully.');
+    } catch (err) {
+      notifyError(err.response?.data?.message || 'Could not delete travel plan.');
+    }
+  };
+
   const create = async (e) => {
     e.preventDefault();
     setError('');
+    const dateError = validateDateRange(startDate, endDate);
+    const budgetError = validateNonNegativeNumber(budget, 'Budget');
+    if (dateError || budgetError) {
+      setError(dateError || budgetError);
+      return;
+    }
+
     try {
       await travelApi.createTravelPlan({
         title,
@@ -66,6 +146,7 @@ export default function DashboardPage() {
       setEndDate('');
       setBudget('0');
       await load();
+      notifySuccess('Trip created successfully.');
     } catch (err) {
       setError(err.response?.data?.message || 'Could not create trip (check dates & budget).');
     }
@@ -76,8 +157,9 @@ export default function DashboardPage() {
     try {
       await travelApi.deleteTravelPlan(id);
       await load();
-    } catch {
-      setError('Could not delete.');
+      notifySuccess('Trip deleted successfully.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not delete.');
     }
   };
 
@@ -95,6 +177,111 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {user?.role === 'Admin' && (
+        <div className="space-y-6">
+          <div className="surface">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="section-title !mb-1">Admin users</h2>
+                <p className="text-sm text-slate-600">Promote, demote, or remove user accounts.</p>
+              </div>
+              {adminLoading && <span className="text-sm text-slate-500">Loading admin data…</span>}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="py-2 pr-3">Email</th>
+                    <th className="py-2 pr-3">Role</th>
+                    <th className="py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {adminUsers.map((adminUser) => {
+                    const isCurrentUser = adminUser.id === user?.userId;
+                    return (
+                      <tr key={adminUser.id}>
+                        <td className="py-3 pr-3 font-medium text-slate-800">{adminUser.email}</td>
+                        <td className="py-3 pr-3">
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                            {adminUser.role}
+                          </span>
+                        </td>
+                        <td className="py-3">
+                          <div className="flex justify-end gap-2">
+                            <button type="button" className="btn-secondary !py-1.5 !text-xs" onClick={() => changeUserRole(adminUser)}>
+                              {adminUser.role === 'Admin' ? 'Demote' : 'Promote'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-danger !py-1.5 !text-xs"
+                              onClick={() => deleteAdminUser(adminUser)}
+                              disabled={isCurrentUser}
+                              title={isCurrentUser ? 'You cannot delete your own admin account.' : undefined}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {adminUsers.length === 0 && (
+                    <tr>
+                      <td colSpan="3" className="py-6 text-center text-slate-500">
+                        No users found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="surface">
+            <div className="mb-4">
+              <h2 className="section-title !mb-1">All travel plans</h2>
+              <p className="text-sm text-slate-600">Review and delete plans across all users.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="py-2 pr-3">Title</th>
+                    <th className="py-2 pr-3">Owner</th>
+                    <th className="py-2 pr-3">Dates</th>
+                    <th className="py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {adminPlans.map((plan) => (
+                    <tr key={plan.id}>
+                      <td className="py-3 pr-3 font-medium text-slate-800">{plan.title}</td>
+                      <td className="py-3 pr-3 text-slate-600">{plan.ownerEmail}</td>
+                      <td className="py-3 pr-3 text-slate-500">
+                        {new Date(plan.startDate).toLocaleDateString()} - {new Date(plan.endDate).toLocaleDateString()}
+                      </td>
+                      <td className="py-3 text-right">
+                        <button type="button" className="btn-danger !py-1.5 !text-xs" onClick={() => deleteAnyPlan(plan)}>
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {adminPlans.length === 0 && (
+                    <tr>
+                      <td colSpan="4" className="py-6 text-center text-slate-500">
+                        No travel plans found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</div>
       )}
@@ -108,7 +295,7 @@ export default function DashboardPage() {
         </h2>
         <p className="mb-6 text-sm text-slate-600">
           End date must be <strong className="text-slate-800">after</strong> start date; budget must be{' '}
-          <strong className="text-slate-800">≥ 0</strong> (validated on the server).
+          <strong className="text-slate-800">≥ 0</strong>.
         </p>
         <form className="space-y-4" onSubmit={create}>
           <div>

@@ -151,12 +151,14 @@ public class ActivitiesByDayDto
 /// <summary>Read-only bundle for shared link (no edit IDs needed for mutations).</summary>
 public class SharedTravelViewDto
 {
+    public int Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public decimal Budget { get; set; }
     public decimal TotalExpenses { get; set; }
     public decimal RemainingBudget { get; set; }
+    public string AccessLevel { get; set; } = "VIEW";
     public List<DestinationDto> Destinations { get; set; } = new();
     public List<ActivitiesByDayDto> ActivitiesByDay { get; set; } = new();
     public List<ExpenseDto> Expenses { get; set; } = new();
@@ -168,9 +170,19 @@ public class ShareLinkResponse
     public string ShareToken { get; set; } = string.Empty;
 }
 
+public class CreateShareRequest
+{
+    public int PlanId { get; set; }
+
+    [Required]
+    [RegularExpression("^(VIEW|EDIT)$", ErrorMessage = "Access type must be VIEW or EDIT.")]
+    public string AccessType { get; set; } = "VIEW";
+}
+
 public class PlanShareResponse
 {
     public string ShareUrl { get; set; } = string.Empty;
     public string QrCode { get; set; } = string.Empty;
     public string AccessLevel { get; set; } = "VIEW";
+    public DateTime? ExpiresAtUtc { get; set; }
 }

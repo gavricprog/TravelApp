@@ -9,6 +9,8 @@ public interface ITravelRepository
     Task<TravelPlan?> GetOwnedAsync(int travelPlanId, int userId, bool asTracking = false);
     Task<TravelPlan?> GetOwnedWithDetailsAsync(int travelPlanId, int userId);
     Task<TravelPlan?> GetByShareTokenAsync(string shareToken);
+    Task<ShareToken?> GetShareTokenAsync(string shareToken);
+    Task AddShareTokenAsync(ShareToken shareToken);
     Task AddPlanAsync(TravelPlan plan);
     Task SaveChangesAsync();
     void RemovePlan(TravelPlan plan);

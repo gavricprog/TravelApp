@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useNotifications } from '../context/NotificationContext.jsx';
 
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth();
+  const { notifySuccess } = useNotifications();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,6 +18,7 @@ export default function LoginPage() {
     setError('');
     try {
       await login(email, password);
+      notifySuccess('Logged in successfully.');
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed.');
@@ -64,7 +67,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
               />
             </div>
             <button type="submit" className="btn-primary w-full py-3 text-base">

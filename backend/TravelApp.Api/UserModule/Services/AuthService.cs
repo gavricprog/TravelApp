@@ -4,6 +4,10 @@ using TravelApp.Api.UserModule.Repositories;
 
 namespace TravelApp.Api.UserModule.Services;
 
+/// <summary>
+/// UserService boundary for authentication and user identity.
+/// This service is designed to be deployed as a separate Service Fabric service.
+/// </summary>
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _users;

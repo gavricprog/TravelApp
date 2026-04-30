@@ -5,7 +5,10 @@ using TravelApp.Api.TravelModule.Repositories;
 
 namespace TravelApp.Api.FinanceModule.Services;
 
-/// <summary>Expense operations stay in FinanceModule; ownership is checked via the travel plan.</summary>
+/// <summary>
+/// FinanceService boundary for expense tracking.
+/// This service is designed to be deployed as a separate Service Fabric service.
+/// </summary>
 public class ExpenseService : IExpenseService
 {
     private readonly IExpenseRepository _expenses;

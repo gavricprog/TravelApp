@@ -22,7 +22,10 @@ public class TravelPdfService : ITravelPdfService
         if (plan == null)
             return (false, "Travel plan not found.", null, null);
 
-        var totalCost = plan.Expenses.Sum(x => x.Amount);
+        var totalCost = plan.Expenses.Sum(x => x.Amount) +
+            plan.Activities
+                .Where(x => x.Status == ActivityStatus.Done)
+                .Sum(x => x.Cost ?? 0);
         var remainingBudget = plan.Budget - totalCost;
         var groupedActivities = plan.Activities
             .OrderBy(a => a.DayDate.Date)

@@ -88,11 +88,15 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// React (Vite) dev server
+// React (Vite) dev server. Vite may use 5174 if 5173 is already occupied.
 builder.Services.AddCors(o =>
 {
     o.AddDefaultPolicy(p =>
-        p.WithOrigins("http://localhost:5173")
+        p.WithOrigins(
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:5174")
             .AllowAnyHeader()
             .AllowAnyMethod());
 });

@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState, useEffect } from 'react';
 import * as authApi from '../api/authApi';
+import { toUser } from '../models/index.js';
 
 const AuthContext = createContext(null);
 
@@ -21,16 +22,26 @@ export function AuthProvider({ children }) {
     else localStorage.removeItem('user');
   }, [user]);
 
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setToken(null);
+      setUser(null);
+    };
+
+    window.addEventListener('auth:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', onUnauthorized);
+  }, []);
+
   const login = async (email, password) => {
     const data = await authApi.login({ email, password });
     setToken(data.token);
-    setUser({ userId: data.userId, email: data.email, role: data.role });
+    setUser(toUser(data));
   };
 
   const register = async (email, password) => {
     const data = await authApi.register({ email, password });
     setToken(data.token);
-    setUser({ userId: data.userId, email: data.email, role: data.role });
+    setUser(toUser(data));
   };
 
   const logout = () => {

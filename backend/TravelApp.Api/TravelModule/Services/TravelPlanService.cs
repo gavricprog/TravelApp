@@ -5,7 +5,10 @@ using TravelApp.Api.TravelModule.Repositories;
 
 namespace TravelApp.Api.TravelModule.Services;
 
-/// <summary>Business rules for travel plans: date/budget validation, mapping, and sharing.</summary>
+/// <summary>
+/// TravelService boundary for plans, destinations, activities, checklist, sharing, and reports.
+/// This service is designed to be deployed as a separate Service Fabric service.
+/// </summary>
 public class TravelPlanService : ITravelPlanService
 {
     private readonly ITravelRepository _travel;
@@ -36,8 +39,11 @@ public class TravelPlanService : ITravelPlanService
         return true;
     }
 
-    private static decimal SumExpenses(IEnumerable<Expense> expenses) =>
-        expenses.Sum(e => e.Amount);
+    private static decimal SumCommittedCosts(IEnumerable<Expense> expenses, IEnumerable<Activity> activities) =>
+        expenses.Sum(e => e.Amount) +
+        activities
+            .Where(a => a.Status == ActivityStatus.Done)
+            .Sum(a => a.Cost ?? 0);
 
     private static bool ValidateDestinationRules(
         string name,
@@ -82,7 +88,7 @@ public class TravelPlanService : ITravelPlanService
 
     private static TravelPlanSummaryDto ToSummary(TravelPlan p)
     {
-        var total = SumExpenses(p.Expenses);
+        var total = SumCommittedCosts(p.Expenses, p.Activities);
         return new TravelPlanSummaryDto
         {
             Id = p.Id,
@@ -243,16 +249,58 @@ public class TravelPlanService : ITravelPlanService
         });
     }
 
+    public async Task<(bool ok, string? error, PlanShareResponse? data)> CreateShareAsync(
+        int travelPlanId,
+        int userId,
+        string accessType,
+        string baseUrl)
+    {
+        var plan = await _travel.GetOwnedAsync(travelPlanId, userId, asTracking: false);
+        if (plan == null)
+            return (false, "Travel plan not found.", null);
+
+        if (!Enum.TryParse<ShareAccessType>(accessType, ignoreCase: true, out var parsedAccess))
+            return (false, "Access type must be VIEW or EDIT.", null);
+
+        var token = new ShareToken
+        {
+            TravelPlanId = travelPlanId,
+            Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)),
+            AccessType = parsedAccess,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        await _travel.AddShareTokenAsync(token);
+
+        var shareUrl = $"{baseUrl.TrimEnd('/')}/share/{token.Token}";
+        return (true, null, new PlanShareResponse
+        {
+            ShareUrl = shareUrl,
+            QrCode = _qrCode.GeneratePngDataUrl(shareUrl),
+            AccessLevel = parsedAccess == ShareAccessType.Edit ? "EDIT" : "VIEW",
+            ExpiresAtUtc = token.ExpiresAtUtc
+        });
+    }
+
     public async Task<SharedTravelViewDto?> GetSharedViewAsync(string shareToken)
     {
         if (string.IsNullOrWhiteSpace(shareToken))
             return null;
 
-        var p = await _travel.GetByShareTokenAsync(shareToken.Trim());
+        var token = await _travel.GetShareTokenAsync(shareToken.Trim());
+        var p = token?.TravelPlan;
+        var accessLevel = token?.AccessType == ShareAccessType.Edit ? "EDIT" : "VIEW";
+
+        if (p == null)
+        {
+            p = await _travel.GetByShareTokenAsync(shareToken.Trim());
+            accessLevel = "VIEW";
+        }
+
         if (p == null)
             return null;
 
-        var total = SumExpenses(p.Expenses);
+        var total = SumCommittedCosts(p.Expenses, p.Activities);
         var activitiesByDay = p.Activities
             .GroupBy(a => a.DayDate.Date)
             .OrderBy(g => g.Key)
@@ -265,12 +313,14 @@ public class TravelPlanService : ITravelPlanService
 
         return new SharedTravelViewDto
         {
+            Id = p.Id,
             Title = p.Title,
             StartDate = p.StartDate,
             EndDate = p.EndDate,
             Budget = p.Budget,
             TotalExpenses = total,
             RemainingBudget = p.Budget - total,
+            AccessLevel = accessLevel,
             Destinations = p.Destinations
                 .OrderBy(d => d.SortOrder)
                 .Select(d => new DestinationDto

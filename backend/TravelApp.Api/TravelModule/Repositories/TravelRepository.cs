@@ -14,6 +14,7 @@ public class TravelRepository : ITravelRepository
         await _db.TravelPlans
             .AsNoTracking()
             .Include(t => t.Expenses)
+            .Include(t => t.Activities)
             .Where(t => t.UserId == userId)
             .OrderByDescending(t => t.StartDate)
             .ToListAsync();
@@ -43,7 +44,28 @@ public class TravelRepository : ITravelRepository
             .Include(t => t.Activities)
             .Include(t => t.Expenses)
             .Include(t => t.ChecklistItems)
-            .FirstOrDefaultAsync(t => t.ShareToken == shareToken);
+            .FirstOrDefaultAsync(t =>
+                t.ShareToken == shareToken ||
+                t.ShareTokens.Any(s => s.Token == shareToken && (s.ExpiresAtUtc == null || s.ExpiresAtUtc > DateTime.UtcNow)));
+
+    public Task<ShareToken?> GetShareTokenAsync(string shareToken) =>
+        _db.ShareTokens
+            .AsNoTracking()
+            .Include(s => s.TravelPlan)
+                .ThenInclude(t => t.Destinations)
+            .Include(s => s.TravelPlan)
+                .ThenInclude(t => t.Activities)
+            .Include(s => s.TravelPlan)
+                .ThenInclude(t => t.Expenses)
+            .Include(s => s.TravelPlan)
+                .ThenInclude(t => t.ChecklistItems)
+            .FirstOrDefaultAsync(s => s.Token == shareToken && (s.ExpiresAtUtc == null || s.ExpiresAtUtc > DateTime.UtcNow));
+
+    public async Task AddShareTokenAsync(ShareToken shareToken)
+    {
+        _db.ShareTokens.Add(shareToken);
+        await _db.SaveChangesAsync();
+    }
 
     public async Task AddPlanAsync(TravelPlan plan)
     {

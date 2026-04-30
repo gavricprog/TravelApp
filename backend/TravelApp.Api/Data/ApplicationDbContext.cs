@@ -16,6 +16,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<ChecklistItem> ChecklistItems => Set<ChecklistItem>();
+    public DbSet<ShareToken> ShareTokens => Set<ShareToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -77,6 +78,17 @@ public class ApplicationDbContext : DbContext
             e.HasOne(c => c.TravelPlan)
                 .WithMany(t => t.ChecklistItems)
                 .HasForeignKey(c => c.TravelPlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ShareToken>(e =>
+        {
+            e.Property(s => s.Token).HasMaxLength(96);
+            e.HasIndex(s => s.Token).IsUnique();
+
+            e.HasOne(s => s.TravelPlan)
+                .WithMany(t => t.ShareTokens)
+                .HasForeignKey(s => s.TravelPlanId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

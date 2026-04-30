@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useNotifications } from '../context/NotificationContext.jsx';
+import { PASSWORD_RULE_TEXT, validatePassword } from '../utils/validation.js';
 
 export default function RegisterPage() {
   const { register, isAuthenticated } = useAuth();
+  const { notifySuccess } = useNotifications();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,8 +17,14 @@ export default function RegisterPage() {
   const submit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!validatePassword(password)) {
+      setError(PASSWORD_RULE_TEXT);
+      return;
+    }
+
     try {
       await register(email, password);
+      notifySuccess('Account created successfully.');
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed.');
@@ -64,9 +73,10 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
+                pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}"
               />
-              <p className="mt-1 text-xs text-slate-500">At least 6 characters.</p>
+              <p className="mt-1 text-xs text-slate-500">{PASSWORD_RULE_TEXT}</p>
             </div>
             <button type="submit" className="btn-primary w-full py-3 text-base">
               Register
