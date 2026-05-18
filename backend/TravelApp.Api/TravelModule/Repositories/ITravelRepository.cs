@@ -2,7 +2,6 @@ using TravelApp.Api.Models;
 
 namespace TravelApp.Api.TravelModule.Repositories;
 
-/// <summary>Data access for travel plans and related entities (destinations, activities, checklist).</summary>
 public interface ITravelRepository
 {
     Task<List<TravelPlan>> ListForUserAsync(int userId);

@@ -22,11 +22,15 @@ public class ApplicationDbContext : DbContext
     {
         modelBuilder.Entity<User>(e =>
         {
+            e.Property(u => u.Name).HasMaxLength(100);
             e.HasIndex(u => u.Email).IsUnique();
         });
 
         modelBuilder.Entity<TravelPlan>(e =>
         {
+            e.Property(t => t.Title).HasMaxLength(200);
+            e.Property(t => t.Description).HasMaxLength(2000);
+            e.Property(t => t.Notes).HasMaxLength(2000);
             e.Property(t => t.Budget).HasPrecision(18, 2);
 
             e.HasOne(t => t.User)
@@ -75,6 +79,8 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<ChecklistItem>(e =>
         {
+            e.Property(c => c.Notes).HasMaxLength(1000);
+
             e.HasOne(c => c.TravelPlan)
                 .WithMany(t => t.ChecklistItems)
                 .HasForeignKey(c => c.TravelPlanId)

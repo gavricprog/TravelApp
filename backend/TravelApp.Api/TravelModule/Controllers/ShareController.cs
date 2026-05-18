@@ -65,11 +65,29 @@ public class ShareController : ControllerBase
         return true;
     }
 
-    private static bool ValidateDestinationRules(DateTime start, DateTime end, out string? error)
+    private static bool ValidateDestinationRules(DateTime planStart, DateTime planEnd, DateTime start, DateTime end, out string? error)
     {
         if (start.Date > end.Date)
         {
             error = "Destination start date cannot be after end date.";
+            return false;
+        }
+
+        if (start.Date < planStart.Date || end.Date > planEnd.Date)
+        {
+            error = "Destination dates must be inside the travel plan date range.";
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
+
+    private static bool ValidateActivityDate(DateTime planStart, DateTime planEnd, DateTime dayDate, out string? error)
+    {
+        if (dayDate.Date < planStart.Date || dayDate.Date > planEnd.Date)
+        {
+            error = "Activity date must be inside the travel plan date range.";
             return false;
         }
 
@@ -88,7 +106,6 @@ public class ShareController : ControllerBase
         return Ok(data);
     }
 
-    /// <summary>Public shared trip view — no JWT required, only the secret token.</summary>
     [HttpGet("{token}")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(SharedTravelViewDto), StatusCodes.Status200OK)]
@@ -116,9 +133,11 @@ public class ShareController : ControllerBase
             return NotFound(new { message = "Travel plan not found." });
 
         plan.Title = request.Title.Trim();
+        plan.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
         plan.StartDate = request.StartDate;
         plan.EndDate = request.EndDate;
         plan.Budget = request.Budget;
+        plan.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
         await _db.SaveChangesAsync();
         return NoContent();
     }
@@ -130,7 +149,12 @@ public class ShareController : ControllerBase
         var (shareToken, error) = await GetShareTokenAsync(token, requireEdit: true);
         if (error != null) return error;
 
-        if (!ValidateDestinationRules(request.StartDate, request.EndDate, out var validationError))
+        if (!ValidateDestinationRules(
+                shareToken!.TravelPlan.StartDate,
+                shareToken.TravelPlan.EndDate,
+                request.StartDate,
+                request.EndDate,
+                out var validationError))
             return BadRequest(new { message = validationError });
 
         var sortOrder = await _db.Destinations
@@ -176,7 +200,12 @@ public class ShareController : ControllerBase
         if (destination == null)
             return NotFound(new { message = "Destination not found." });
 
-        if (!ValidateDestinationRules(request.StartDate, request.EndDate, out var validationError))
+        if (!ValidateDestinationRules(
+                shareToken!.TravelPlan.StartDate,
+                shareToken.TravelPlan.EndDate,
+                request.StartDate,
+                request.EndDate,
+                out var validationError))
             return BadRequest(new { message = validationError });
 
         destination.Name = request.Name.Trim();
@@ -223,9 +252,12 @@ public class ShareController : ControllerBase
         var (shareToken, error) = await GetShareTokenAsync(token, requireEdit: true);
         if (error != null) return error;
 
+        if (!ValidateActivityDate(shareToken!.TravelPlan.StartDate, shareToken.TravelPlan.EndDate, request.DayDate, out var validationError))
+            return BadRequest(new { message = validationError });
+
         var activity = new Activity
         {
-            TravelPlanId = shareToken!.TravelPlanId,
+            TravelPlanId = shareToken.TravelPlanId,
             DayDate = request.DayDate.Date,
             Title = request.Title.Trim(),
             Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
@@ -246,10 +278,14 @@ public class ShareController : ControllerBase
     {
         var (shareToken, error) = await GetShareTokenAsync(token, requireEdit: true);
         if (error != null) return error;
+        var share = shareToken!;
 
-        var activity = await _db.Activities.FirstOrDefaultAsync(a => a.Id == activityId && a.TravelPlanId == shareToken!.TravelPlanId);
+        var activity = await _db.Activities.FirstOrDefaultAsync(a => a.Id == activityId && a.TravelPlanId == share.TravelPlanId);
         if (activity == null)
             return NotFound(new { message = "Activity not found." });
+
+        if (!ValidateActivityDate(share.TravelPlan.StartDate, share.TravelPlan.EndDate, request.DayDate, out var validationError))
+            return BadRequest(new { message = validationError });
 
         activity.DayDate = request.DayDate.Date;
         activity.Title = request.Title.Trim();
@@ -306,6 +342,33 @@ public class ShareController : ControllerBase
         });
     }
 
+    [HttpPut("{token}/expenses/{expenseId:int}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> UpdateExpense(string token, int expenseId, [FromBody] UpdateExpenseRequest request)
+    {
+        var (shareToken, error) = await GetShareTokenAsync(token, requireEdit: true);
+        if (error != null) return error;
+
+        var expense = await _db.Expenses.FirstOrDefaultAsync(e => e.Id == expenseId && e.TravelPlanId == shareToken!.TravelPlanId);
+        if (expense == null)
+            return NotFound(new { message = "Expense not found." });
+
+        expense.Amount = request.Amount;
+        expense.Description = request.Description.Trim();
+        expense.Category = string.IsNullOrWhiteSpace(request.Category) ? "General" : request.Category.Trim();
+        expense.SpentOn = request.SpentOn;
+        await _db.SaveChangesAsync();
+
+        return Ok(new ExpenseDto
+        {
+            Id = expense.Id,
+            Amount = expense.Amount,
+            Description = expense.Description,
+            Category = expense.Category,
+            SpentOn = expense.SpentOn
+        });
+    }
+
     [HttpDelete("{token}/expenses/{expenseId:int}")]
     [AllowAnonymous]
     public async Task<IActionResult> DeleteExpense(string token, int expenseId)
@@ -333,12 +396,21 @@ public class ShareController : ControllerBase
         {
             TravelPlanId = shareToken!.TravelPlanId,
             Text = request.Text.Trim(),
+            ReminderDate = request.ReminderDate?.Date,
+            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
             IsDone = false
         };
 
         _db.ChecklistItems.Add(item);
         await _db.SaveChangesAsync();
-        return Ok(new ChecklistItemDto { Id = item.Id, Text = item.Text, IsDone = item.IsDone });
+        return Ok(new ChecklistItemDto
+        {
+            Id = item.Id,
+            Text = item.Text,
+            ReminderDate = item.ReminderDate,
+            Notes = item.Notes,
+            IsDone = item.IsDone
+        });
     }
 
     [HttpPatch("{token}/checklist/{itemId:int}")]

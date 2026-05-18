@@ -7,6 +7,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{E527
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TravelApp.Api", "backend\TravelApp.Api\TravelApp.Api.csproj", "{23EDE958-1E38-4DEA-BD96-6784FCB6C9B1}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-00C04F79EFBC}") = "ServiceFabric", "ServiceFabric", "{D9D77BBA-5420-4F3A-8F64-13EFBD67A9DD}"
+	ProjectSection(SolutionItems) = preProject
+		backend\ServiceFabric\README.md = backend\ServiceFabric\README.md
+		backend\ServiceFabric\TravelApp.ServiceFabric.sfproj = backend\ServiceFabric\TravelApp.ServiceFabric.sfproj
+		backend\ServiceFabric\ApplicationPackageRoot\ApplicationManifest.xml = backend\ServiceFabric\ApplicationPackageRoot\ApplicationManifest.xml
+		backend\ServiceFabric\ApplicationPackageRoot\UserServicePkg\ServiceManifest.xml = backend\ServiceFabric\ApplicationPackageRoot\UserServicePkg\ServiceManifest.xml
+		backend\ServiceFabric\ApplicationPackageRoot\TravelServicePkg\ServiceManifest.xml = backend\ServiceFabric\ApplicationPackageRoot\TravelServicePkg\ServiceManifest.xml
+		backend\ServiceFabric\ApplicationPackageRoot\FinanceServicePkg\ServiceManifest.xml = backend\ServiceFabric\ApplicationPackageRoot\FinanceServicePkg\ServiceManifest.xml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,5 +33,6 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{23EDE958-1E38-4DEA-BD96-6784FCB6C9B1} = {E5274147-471E-43B9-B997-6222489317F4}
+		{D9D77BBA-5420-4F3A-8F64-13EFBD67A9DD} = {E5274147-471E-43B9-B997-6222489317F4}
 	EndGlobalSection
 EndGlobal

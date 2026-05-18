@@ -16,6 +16,25 @@ export function validateDateRange(startDate, endDate, label = 'End date') {
   return null;
 }
 
+export function validateDateInsideRange(date, minDate, maxDate, label = 'Date') {
+  if (!date || !minDate || !maxDate) return null;
+
+  const current = new Date(date);
+  if (current < new Date(minDate) || current > new Date(maxDate)) {
+    return `${label} must be inside the travel dates.`;
+  }
+
+  return null;
+}
+
+export function validateDateRangeInsideTrip(startDate, endDate, minDate, maxDate, label = 'Date range') {
+  const rangeError = validateDateRange(startDate, endDate, `${label} end date`);
+  if (rangeError) return rangeError;
+
+  return validateDateInsideRange(startDate, minDate, maxDate, `${label} start date`) ||
+    validateDateInsideRange(endDate, minDate, maxDate, `${label} end date`);
+}
+
 export function validateNonNegativeNumber(value, label) {
   const number = Number(value);
   if (!Number.isFinite(number) || number < 0) {

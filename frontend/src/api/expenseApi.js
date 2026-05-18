@@ -6,6 +6,11 @@ export async function addExpense(travelPlanId, payload) {
   return toExpense(data);
 }
 
+export async function updateExpense(travelPlanId, expenseId, payload) {
+  const { data } = await client.put(`/api/travel-plans/${travelPlanId}/expenses/${expenseId}`, payload);
+  return toExpense(data);
+}
+
 export async function deleteExpense(travelPlanId, expenseId) {
   await client.delete(`/api/travel-plans/${travelPlanId}/expenses/${expenseId}`);
 }

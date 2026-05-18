@@ -7,9 +7,11 @@ public class TravelPlanSummaryDto
 {
     public int Id { get; set; }
     public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public decimal Budget { get; set; }
+    public string? Notes { get; set; }
     public decimal TotalExpenses { get; set; }
     public string? ShareToken { get; set; }
 }
@@ -27,11 +29,17 @@ public class CreateTravelPlanRequest
     [Required, MaxLength(200)]
     public string Title { get; set; } = string.Empty;
 
+    [MaxLength(2000)]
+    public string? Description { get; set; }
+
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
 
     [Range(0, double.MaxValue, ErrorMessage = "Budget must be >= 0")]
     public decimal Budget { get; set; }
+
+    [MaxLength(2000)]
+    public string? Notes { get; set; }
 }
 
 public class UpdateTravelPlanRequest : CreateTravelPlanRequest
@@ -148,14 +156,15 @@ public class ActivitiesByDayDto
     public List<ActivityDto> Items { get; set; } = new();
 }
 
-/// <summary>Read-only bundle for shared link (no edit IDs needed for mutations).</summary>
 public class SharedTravelViewDto
 {
     public int Id { get; set; }
     public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public decimal Budget { get; set; }
+    public string? Notes { get; set; }
     public decimal TotalExpenses { get; set; }
     public decimal RemainingBudget { get; set; }
     public string AccessLevel { get; set; } = "VIEW";

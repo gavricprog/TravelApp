@@ -94,7 +94,6 @@ function parseFileName(contentDisposition) {
   return rawName ? decodeURIComponent(rawName) : null;
 }
 
-/** Public read-only view — no Authorization header required on backend. */
 export async function getSharedTravel(token) {
   const { data } = await client.get(`/api/share/${encodeURIComponent(token)}`);
   return {
@@ -140,6 +139,11 @@ export async function removeSharedActivity(token, activityId) {
 
 export async function addSharedExpense(token, payload) {
   const { data } = await client.post(`/api/share/${encodeURIComponent(token)}/expenses`, payload);
+  return toExpense(data);
+}
+
+export async function updateSharedExpense(token, expenseId, payload) {
+  const { data } = await client.put(`/api/share/${encodeURIComponent(token)}/expenses/${expenseId}`, payload);
   return toExpense(data);
 }
 

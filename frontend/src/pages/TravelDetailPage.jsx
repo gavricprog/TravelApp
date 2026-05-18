@@ -91,6 +91,9 @@ export default function TravelDetailPage() {
 
   const addExpense = (payload) => runMutation(() => expenseApi.addExpense(travelId, payload), 'Expense added successfully.');
 
+  const updateExpense = (expenseId, payload) =>
+    runMutation(() => expenseApi.updateExpense(travelId, expenseId, payload), 'Expense updated successfully.');
+
   const removeExpense = (expenseId) =>
     runMutation(() => expenseApi.deleteExpense(travelId, expenseId), 'Expense removed successfully.');
 
@@ -209,6 +212,8 @@ export default function TravelDetailPage() {
 
       <DestinationsSection
         destinations={plan.destinations}
+        planStartDate={plan.startDate?.slice(0, 10)}
+        planEndDate={plan.endDate?.slice(0, 10)}
         onAdd={addDestination}
         onUpdate={updateDestination}
         onRemove={removeDestination}
@@ -217,13 +222,21 @@ export default function TravelDetailPage() {
 
       <ActivitiesSection
         activities={plan.activities}
+        planStartDate={plan.startDate?.slice(0, 10)}
+        planEndDate={plan.endDate?.slice(0, 10)}
         onAdd={addActivity}
         onUpdate={updateActivity}
         onRemove={removeActivity}
         onValidationError={showError}
       />
 
-      <ExpensesSection expenses={plan.expenses} onAdd={addExpense} onRemove={removeExpense} onValidationError={showError} />
+      <ExpensesSection
+        expenses={plan.expenses}
+        onAdd={addExpense}
+        onUpdate={updateExpense}
+        onRemove={removeExpense}
+        onValidationError={showError}
+      />
 
       <ChecklistSection
         items={plan.checklist}

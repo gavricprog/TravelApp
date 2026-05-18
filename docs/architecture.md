@@ -2,7 +2,7 @@
 
 ## Overview
 
-TravelApp is a full-stack travel planning system built with React, ASP.NET Core 8 Web API, Entity Framework Core, and Microsoft SQL Server. The current implementation is a modular monolith: all backend modules run in one ASP.NET Core host, but the code is separated by service responsibility so it can be migrated to independently deployed services later.
+TravelApp is a full-stack travel planning system built with React, ASP.NET Core 8 Web API, Entity Framework Core, Microsoft SQL Server, and a Microsoft Service Fabric deployment layer.
 
 ## Frontend
 
@@ -32,7 +32,7 @@ Responsibilities:
 - Role handling
 - Admin statistics endpoint
 
-This module is designed to be deployed as a separate Microsoft Service Fabric service in a future migration.
+This module maps to the `UserStatelessService` Service Fabric boundary.
 
 ### TravelService
 
@@ -47,7 +47,7 @@ Responsibilities:
 - Share links and QR codes
 - PDF report generation
 
-This module is designed to be deployed as a separate Microsoft Service Fabric service in a future migration.
+This module maps to the `TravelStatefulService` Service Fabric boundary. SQL Server remains the main persistent store.
 
 ### FinanceService
 
@@ -60,7 +60,7 @@ Responsibilities:
 - Expense category and amount validation
 - Ownership checks through travel plan access
 
-This module is designed to be deployed as a separate Microsoft Service Fabric service in a future migration.
+This module maps to the `FinanceStatelessService` Service Fabric boundary.
 
 ## Database
 
@@ -72,12 +72,32 @@ Main relationships:
 - `TravelPlan` owns destinations, activities, expenses, and checklist items.
 - Dependent records are deleted through cascade delete when their parent plan is deleted.
 
-## Service Fabric Migration Path
+## Service Fabric Layer
 
-The project does not currently include Service Fabric project files or runtime hosting. The code is prepared for migration by keeping service boundaries explicit:
+The repository includes a Service Fabric application package under `backend/ServiceFabric`:
 
-- `UserModule` -> future UserService
-- `TravelModule` -> future TravelService
-- `FinanceModule` -> future FinanceService
+- `ApplicationPackageRoot/ApplicationManifest.xml`
+- `ApplicationPackageRoot/UserServicePkg/ServiceManifest.xml`
+- `ApplicationPackageRoot/TravelServicePkg/ServiceManifest.xml`
+- `ApplicationPackageRoot/FinanceServicePkg/ServiceManifest.xml`
+- `src/UserStatelessService`
+- `src/TravelStatefulService`
+- `src/FinanceStatelessService`
 
-A future Service Fabric implementation should create separate stateless services for API/controller hosting and, where required, a stateful service using Reliable Collections for service-owned state. The database-backed EF Core model can remain the persistent source of truth during the first migration phase.
+The Service Fabric topology is:
+
+```mermaid
+flowchart LR
+  ReactApp["React frontend"] --> ApiGateway["TravelApp.Api"]
+  ApiGateway --> SqlServer["SQL Server"]
+  subgraph sfLayer [Service Fabric layer]
+    UserService["UserStatelessService"]
+    TravelService["TravelStatefulService"]
+    FinanceService["FinanceStatelessService"]
+  end
+  UserService --> SqlServer
+  TravelService --> SqlServer
+  FinanceService --> SqlServer
+```
+
+`TravelApp.Api` exposes the HTTP routes used by the frontend. The Service Fabric package defines three service boundaries and includes both stateless and stateful services.

@@ -3,15 +3,19 @@ import { validateDateRange, validateNonNegativeNumber } from '../utils/validatio
 
 export default function TripSummaryForm({ plan, remaining, onSave, onDownloadPdf, isPdfLoading, onValidationError }) {
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [budget, setBudget] = useState('0');
+  const [notes, setNotes] = useState('');
 
   useEffect(() => {
     setTitle(plan.title || '');
+    setDescription(plan.description || '');
     setStartDate(plan.startDate?.slice(0, 10) || '');
     setEndDate(plan.endDate?.slice(0, 10) || '');
     setBudget(String(plan.budget ?? 0));
+    setNotes(plan.notes || '');
   }, [plan]);
 
   const remainingOk = remaining >= 0;
@@ -27,9 +31,11 @@ export default function TripSummaryForm({ plan, remaining, onSave, onDownloadPdf
 
     await onSave({
       title,
+      description: description.trim() || null,
       startDate,
       endDate,
       budget: Number(budget),
+      notes: notes.trim() || null,
     });
   };
 
@@ -65,6 +71,16 @@ export default function TripSummaryForm({ plan, remaining, onSave, onDownloadPdf
             <label className="field-label">Title</label>
             <input className="field" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} />
           </div>
+          <div>
+            <label className="field-label">Description</label>
+            <textarea
+              className="field min-h-24"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={2000}
+              placeholder="Short overview of the trip"
+            />
+          </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label className="field-label">Start</label>
@@ -86,6 +102,16 @@ export default function TripSummaryForm({ plan, remaining, onSave, onDownloadPdf
                 required
               />
             </div>
+          </div>
+          <div>
+            <label className="field-label">General notes</label>
+            <textarea
+              className="field min-h-24"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={2000}
+              placeholder="Reservations, reminders, travel documents..."
+            />
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button type="submit" className="btn-primary">

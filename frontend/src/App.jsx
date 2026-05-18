@@ -72,7 +72,7 @@ function Layout({ children }) {
       </main>
 
       <footer className="mt-auto border-t border-slate-200/80 bg-white/50 py-4 text-center text-xs text-slate-500 backdrop-blur-sm">
-        Student project — plan trips, track budget, share read-only links.
+        Plan trips, track budget, and share itineraries.
       </footer>
     </div>
   );

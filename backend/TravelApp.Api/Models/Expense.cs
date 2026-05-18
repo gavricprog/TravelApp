@@ -9,7 +9,6 @@ public class Expense
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
 
-    /// <summary>e.g. Food, Transport — simple string category.</summary>
     public string Category { get; set; } = "General";
 
     public DateTime? SpentOn { get; set; }

@@ -4,7 +4,6 @@ import { toUser } from '../models/index.js';
 
 const AuthContext = createContext(null);
 
-/** Simple auth state with React Context (no Redux). */
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [user, setUser] = useState(() => {
@@ -38,8 +37,8 @@ export function AuthProvider({ children }) {
     setUser(toUser(data));
   };
 
-  const register = async (email, password) => {
-    const data = await authApi.register({ email, password });
+  const register = async (name, email, password) => {
+    const data = await authApi.register({ name, email, password });
     setToken(data.token);
     setUser(toUser(data));
   };

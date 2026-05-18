@@ -8,6 +8,7 @@ export default function RegisterPage() {
   const { register, isAuthenticated } = useAuth();
   const { notifySuccess } = useNotifications();
   const navigate = useNavigate();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,13 +18,18 @@ export default function RegisterPage() {
   const submit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!name.trim()) {
+      setError('Name is required.');
+      return;
+    }
+
     if (!validatePassword(password)) {
       setError(PASSWORD_RULE_TEXT);
       return;
     }
 
     try {
-      await register(email, password);
+      await register(name, email, password);
       notifySuccess('Account created successfully.');
       navigate('/', { replace: true });
     } catch (err) {
@@ -47,6 +53,21 @@ export default function RegisterPage() {
           )}
 
           <form className="mt-8 space-y-5" onSubmit={submit}>
+            <div>
+              <label className="field-label" htmlFor="name">
+                Name
+              </label>
+              <input
+                id="name"
+                className="field"
+                type="text"
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                maxLength={100}
+              />
+            </div>
             <div>
               <label className="field-label" htmlFor="email">
                 Email

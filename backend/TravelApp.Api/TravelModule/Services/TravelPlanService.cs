@@ -5,10 +5,6 @@ using TravelApp.Api.TravelModule.Repositories;
 
 namespace TravelApp.Api.TravelModule.Services;
 
-/// <summary>
-/// TravelService boundary for plans, destinations, activities, checklist, sharing, and reports.
-/// This service is designed to be deployed as a separate Service Fabric service.
-/// </summary>
 public class TravelPlanService : ITravelPlanService
 {
     private readonly ITravelRepository _travel;
@@ -20,7 +16,6 @@ public class TravelPlanService : ITravelPlanService
         _qrCode = qrCode;
     }
 
-    /// <summary>Professor-facing rules: end after start, budget non-negative.</summary>
     private static bool ValidatePlanRules(DateTime start, DateTime end, decimal budget, out string? error)
     {
         if (end <= start)
@@ -48,6 +43,8 @@ public class TravelPlanService : ITravelPlanService
     private static bool ValidateDestinationRules(
         string name,
         string location,
+        DateTime planStart,
+        DateTime planEnd,
         DateTime startDate,
         DateTime endDate,
         out string? error)
@@ -67,6 +64,24 @@ public class TravelPlanService : ITravelPlanService
         if (startDate.Date > endDate.Date)
         {
             error = "Destination start date cannot be after end date.";
+            return false;
+        }
+
+        if (startDate.Date < planStart.Date || endDate.Date > planEnd.Date)
+        {
+            error = "Destination dates must be inside the travel plan date range.";
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
+
+    private static bool ValidateActivityDate(DateTime planStart, DateTime planEnd, DateTime dayDate, out string? error)
+    {
+        if (dayDate.Date < planStart.Date || dayDate.Date > planEnd.Date)
+        {
+            error = "Activity date must be inside the travel plan date range.";
             return false;
         }
 
@@ -93,9 +108,11 @@ public class TravelPlanService : ITravelPlanService
         {
             Id = p.Id,
             Title = p.Title,
+            Description = p.Description,
             StartDate = p.StartDate,
             EndDate = p.EndDate,
             Budget = p.Budget,
+            Notes = p.Notes,
             TotalExpenses = total,
             ShareToken = p.ShareToken
         };
@@ -108,9 +125,11 @@ public class TravelPlanService : ITravelPlanService
         {
             Id = summary.Id,
             Title = summary.Title,
+            Description = summary.Description,
             StartDate = summary.StartDate,
             EndDate = summary.EndDate,
             Budget = summary.Budget,
+            Notes = summary.Notes,
             TotalExpenses = summary.TotalExpenses,
             ShareToken = summary.ShareToken,
             Destinations = p.Destinations
@@ -145,7 +164,14 @@ public class TravelPlanService : ITravelPlanService
                 .ToList(),
             Checklist = p.ChecklistItems
                 .OrderBy(c => c.Id)
-                .Select(c => new ChecklistItemDto { Id = c.Id, Text = c.Text, IsDone = c.IsDone })
+                .Select(c => new ChecklistItemDto
+                {
+                    Id = c.Id,
+                    Text = c.Text,
+                    ReminderDate = c.ReminderDate,
+                    Notes = c.Notes,
+                    IsDone = c.IsDone
+                })
                 .ToList()
         };
     }
@@ -171,9 +197,11 @@ public class TravelPlanService : ITravelPlanService
         {
             UserId = userId,
             Title = request.Title.Trim(),
+            Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             StartDate = request.StartDate,
             EndDate = request.EndDate,
-            Budget = request.Budget
+            Budget = request.Budget,
+            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim()
         };
 
         await _travel.AddPlanAsync(plan);
@@ -191,9 +219,11 @@ public class TravelPlanService : ITravelPlanService
             return (false, "Travel plan not found.");
 
         plan.Title = request.Title.Trim();
+        plan.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
         plan.StartDate = request.StartDate;
         plan.EndDate = request.EndDate;
         plan.Budget = request.Budget;
+        plan.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
 
         await _travel.SaveChangesAsync();
         return (true, null);
@@ -216,7 +246,6 @@ public class TravelPlanService : ITravelPlanService
         if (plan == null)
             return (false, "Travel plan not found.", null);
 
-        // Simple random token — long enough to guess impractical for a class project.
         plan.ShareToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
         await _travel.SaveChangesAsync();
 
@@ -315,9 +344,11 @@ public class TravelPlanService : ITravelPlanService
         {
             Id = p.Id,
             Title = p.Title,
+            Description = p.Description,
             StartDate = p.StartDate,
             EndDate = p.EndDate,
             Budget = p.Budget,
+            Notes = p.Notes,
             TotalExpenses = total,
             RemainingBudget = p.Budget - total,
             AccessLevel = accessLevel,
@@ -349,7 +380,14 @@ public class TravelPlanService : ITravelPlanService
                 .ToList(),
             Checklist = p.ChecklistItems
                 .OrderBy(c => c.Id)
-                .Select(c => new ChecklistItemDto { Id = c.Id, Text = c.Text, IsDone = c.IsDone })
+                .Select(c => new ChecklistItemDto
+                {
+                    Id = c.Id,
+                    Text = c.Text,
+                    ReminderDate = c.ReminderDate,
+                    Notes = c.Notes,
+                    IsDone = c.IsDone
+                })
                 .ToList()
         };
     }
@@ -357,10 +395,11 @@ public class TravelPlanService : ITravelPlanService
     public async Task<(bool ok, string? error, DestinationDto? data)> AddDestinationAsync(
         int travelPlanId, int userId, CreateDestinationRequest request)
     {
-        if (!await _travel.UserOwnsTravelPlanAsync(travelPlanId, userId))
+        var plan = await _travel.GetOwnedAsync(travelPlanId, userId);
+        if (plan == null)
             return (false, "Travel plan not found.", null);
 
-        if (!ValidateDestinationRules(request.Name, request.Location, request.StartDate, request.EndDate, out var err))
+        if (!ValidateDestinationRules(request.Name, request.Location, plan.StartDate, plan.EndDate, request.StartDate, request.EndDate, out var err))
             return (false, err, null);
 
         var order = await _travel.NextDestinationSortOrderAsync(travelPlanId);
@@ -398,7 +437,7 @@ public class TravelPlanService : ITravelPlanService
         if (d == null)
             return (false, "Destination not found.", null);
 
-        if (!ValidateDestinationRules(request.Name, request.Location, request.StartDate, request.EndDate, out var err))
+        if (!ValidateDestinationRules(request.Name, request.Location, d.TravelPlan.StartDate, d.TravelPlan.EndDate, request.StartDate, request.EndDate, out var err))
             return (false, err, null);
 
         d.Name = request.Name.Trim();
@@ -435,8 +474,12 @@ public class TravelPlanService : ITravelPlanService
     public async Task<(bool ok, string? error, ActivityDto? data)> AddActivityAsync(
         int travelPlanId, int userId, CreateActivityRequest request)
     {
-        if (!await _travel.UserOwnsTravelPlanAsync(travelPlanId, userId))
+        var plan = await _travel.GetOwnedAsync(travelPlanId, userId);
+        if (plan == null)
             return (false, "Travel plan not found.", null);
+
+        if (!ValidateActivityDate(plan.StartDate, plan.EndDate, request.DayDate, out var err))
+            return (false, err, null);
 
         var a = new Activity
         {
@@ -461,6 +504,9 @@ public class TravelPlanService : ITravelPlanService
         var a = await _travel.GetActivityAsync(activityId, userId);
         if (a == null)
             return (false, "Activity not found.", null);
+
+        if (!ValidateActivityDate(a.TravelPlan.StartDate, a.TravelPlan.EndDate, request.DayDate, out var err))
+            return (false, err, null);
 
         a.DayDate = request.DayDate.Date;
         a.Title = request.Title.Trim();
@@ -495,12 +541,21 @@ public class TravelPlanService : ITravelPlanService
         {
             TravelPlanId = travelPlanId,
             Text = request.Text.Trim(),
+            ReminderDate = request.ReminderDate?.Date,
+            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
             IsDone = false
         };
 
         await _travel.AddChecklistItemAsync(c);
 
-        return (true, null, new ChecklistItemDto { Id = c.Id, Text = c.Text, IsDone = c.IsDone });
+        return (true, null, new ChecklistItemDto
+        {
+            Id = c.Id,
+            Text = c.Text,
+            ReminderDate = c.ReminderDate,
+            Notes = c.Notes,
+            IsDone = c.IsDone
+        });
     }
 
     public async Task<(bool ok, string? error)> UpdateChecklistItemAsync(int itemId, int userId, UpdateChecklistItemRequest request)

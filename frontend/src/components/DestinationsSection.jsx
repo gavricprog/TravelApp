@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { validateDateRange } from '../utils/validation.js';
+import { useEffect, useState } from 'react';
+import { validateDateRangeInsideTrip } from '../utils/validation.js';
 
 const emptyDestination = {
   name: '',
@@ -21,28 +21,52 @@ function toPayload(fields) {
   };
 }
 
-export default function DestinationsSection({ destinations = [], onAdd, onUpdate, onRemove, onValidationError }) {
+function createEmptyDestination(planStartDate = '') {
+  return {
+    ...emptyDestination,
+    startDate: planStartDate,
+    endDate: planStartDate,
+  };
+}
+
+export default function DestinationsSection({
+  destinations = [],
+  planStartDate = '',
+  planEndDate = '',
+  onAdd,
+  onUpdate,
+  onRemove,
+  onValidationError,
+}) {
   const [form, setForm] = useState(emptyDestination);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(emptyDestination);
+
+  useEffect(() => {
+    setForm((current) => ({
+      ...current,
+      startDate: current.startDate || planStartDate,
+      endDate: current.endDate || planStartDate,
+    }));
+  }, [planStartDate]);
 
   const updateForm = (field, value) => setForm((current) => ({ ...current, [field]: value }));
   const updateEditForm = (field, value) => setEditForm((current) => ({ ...current, [field]: value }));
 
   const submit = async (e) => {
     e.preventDefault();
-    const error = validateDateRange(form.startDate, form.endDate, 'Destination end date');
+    const error = validateDateRangeInsideTrip(form.startDate, form.endDate, planStartDate, planEndDate, 'Destination');
     if (error) {
       onValidationError(error);
       return;
     }
 
     await onAdd(toPayload(form));
-    setForm(emptyDestination);
+    setForm(createEmptyDestination(planStartDate));
   };
 
   const saveEdit = async () => {
-    const error = validateDateRange(editForm.startDate, editForm.endDate, 'Destination end date');
+    const error = validateDateRangeInsideTrip(editForm.startDate, editForm.endDate, planStartDate, planEndDate, 'Destination');
     if (error) {
       onValidationError(error);
       return;
@@ -80,11 +104,27 @@ export default function DestinationsSection({ destinations = [], onAdd, onUpdate
         </div>
         <div>
           <label className="field-label">Start date</label>
-          <input className="field" type="date" value={form.startDate} onChange={(e) => updateForm('startDate', e.target.value)} required />
+          <input
+            className="field"
+            type="date"
+            value={form.startDate}
+            min={planStartDate}
+            max={planEndDate}
+            onChange={(e) => updateForm('startDate', e.target.value)}
+            required
+          />
         </div>
         <div>
           <label className="field-label">End date</label>
-          <input className="field" type="date" value={form.endDate} onChange={(e) => updateForm('endDate', e.target.value)} required />
+          <input
+            className="field"
+            type="date"
+            value={form.endDate}
+            min={planStartDate}
+            max={planEndDate}
+            onChange={(e) => updateForm('endDate', e.target.value)}
+            required
+          />
         </div>
         <div className="sm:col-span-2">
           <label className="field-label">Description (optional)</label>
@@ -109,8 +149,24 @@ export default function DestinationsSection({ destinations = [], onAdd, onUpdate
               <div className="grid flex-1 gap-2 sm:grid-cols-2">
                 <input className="field" value={editForm.name} onChange={(e) => updateEditForm('name', e.target.value)} required />
                 <input className="field" value={editForm.location} onChange={(e) => updateEditForm('location', e.target.value)} required />
-                <input className="field" type="date" value={editForm.startDate} onChange={(e) => updateEditForm('startDate', e.target.value)} required />
-                <input className="field" type="date" value={editForm.endDate} onChange={(e) => updateEditForm('endDate', e.target.value)} required />
+                <input
+                  className="field"
+                  type="date"
+                  value={editForm.startDate}
+                  min={planStartDate}
+                  max={planEndDate}
+                  onChange={(e) => updateEditForm('startDate', e.target.value)}
+                  required
+                />
+                <input
+                  className="field"
+                  type="date"
+                  value={editForm.endDate}
+                  min={planStartDate}
+                  max={planEndDate}
+                  onChange={(e) => updateEditForm('endDate', e.target.value)}
+                  required
+                />
                 <textarea
                   className="field sm:col-span-2"
                   rows="2"

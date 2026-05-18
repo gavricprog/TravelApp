@@ -1,16 +1,4 @@
-export const ACTIVITY_STATUSES = ['Planned', 'Done', 'Cancelled'];
-
-/**
- * @typedef {Object} Activity
- * @property {number} id
- * @property {string} dayDate
- * @property {string} title
- * @property {string | null} notes
- * @property {string | null} time
- * @property {string | null} location
- * @property {number | null} cost
- * @property {'Planned' | 'Done' | 'Cancelled'} status
- */
+export const ACTIVITY_STATUSES = ['Planned', 'Reserved', 'Done', 'Cancelled'];
 
 export function toActivity(data) {
   return {

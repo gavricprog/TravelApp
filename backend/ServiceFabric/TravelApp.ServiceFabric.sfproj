@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{7D5733E0-3B8A-4A3A-A27E-5F12BE138493}</ProjectGuid>
+    <ProjectVersion>2.8</ProjectVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <ApplicationTypeName>TravelAppType</ApplicationTypeName>
+    <ApplicationTypeVersion>1.0.0</ApplicationTypeVersion>
+    <ApplicationPackageRoot>ApplicationPackageRoot</ApplicationPackageRoot>
+    <OutputPath>pkg\$(Configuration)</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="ApplicationPackageRoot\ApplicationManifest.xml" />
+    <None Include="ApplicationPackageRoot\UserServicePkg\ServiceManifest.xml" />
+    <None Include="ApplicationPackageRoot\TravelServicePkg\ServiceManifest.xml" />
+    <None Include="ApplicationPackageRoot\FinanceServicePkg\ServiceManifest.xml" />
+  </ItemGroup>
+</Project>

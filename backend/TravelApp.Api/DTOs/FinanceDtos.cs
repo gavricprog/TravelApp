@@ -24,3 +24,7 @@ public class CreateExpenseRequest
 
     public DateTime? SpentOn { get; set; }
 }
+
+public class UpdateExpenseRequest : CreateExpenseRequest
+{
+}

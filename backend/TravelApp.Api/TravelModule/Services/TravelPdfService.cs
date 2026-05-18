@@ -116,10 +116,11 @@ public class TravelPdfService : ITravelPdfService
             });
 
             Row(table, "Name", plan.Title);
-            Row(table, "Description", "N/A");
+            Row(table, "Description", plan.Description ?? "N/A");
             Row(table, "Start Date", plan.StartDate.ToString("yyyy-MM-dd"));
             Row(table, "End Date", plan.EndDate.ToString("yyyy-MM-dd"));
             Row(table, "Budget", plan.Budget.ToString("0.00"));
+            Row(table, "General Notes", plan.Notes ?? "N/A");
         });
     }
 
@@ -214,7 +215,9 @@ public class TravelPdfService : ITravelPdfService
                 foreach (var item in plan.ChecklistItems.OrderBy(x => x.Id))
                 {
                     var mark = item.IsDone ? "[x]" : "[ ]";
-                    col.Item().Text($"{mark} {item.Text}");
+                    var reminder = item.ReminderDate == null ? "" : $" (reminder: {item.ReminderDate:yyyy-MM-dd})";
+                    var checklistNotes = string.IsNullOrWhiteSpace(item.Notes) ? "" : $" - {item.Notes}";
+                    col.Item().Text($"{mark} {item.Text}{reminder}{checklistNotes}");
                 }
             }
             else
@@ -222,11 +225,14 @@ public class TravelPdfService : ITravelPdfService
                 col.Item().Text("No checklist items.").Italic().FontColor(Colors.Grey.Darken1);
             }
 
-            var notes = plan.Destinations
+            var notes = new List<string>();
+            if (!string.IsNullOrWhiteSpace(plan.Notes))
+                notes.Add($"General: {plan.Notes}");
+
+            notes.AddRange(plan.Destinations
                 .Where(d => !string.IsNullOrWhiteSpace(d.Notes))
                 .Select(d => $"{d.Name}: {d.Notes}")
-                .Concat(plan.Activities.Where(a => !string.IsNullOrWhiteSpace(a.Notes)).Select(a => $"{a.DayDate:yyyy-MM-dd} - {a.Title}: {a.Notes}"))
-                .ToList();
+                .Concat(plan.Activities.Where(a => !string.IsNullOrWhiteSpace(a.Notes)).Select(a => $"{a.DayDate:yyyy-MM-dd} - {a.Title}: {a.Notes}")));
 
             col.Item().PaddingTop(6).Text("Notes").SemiBold();
             if (notes.Any())

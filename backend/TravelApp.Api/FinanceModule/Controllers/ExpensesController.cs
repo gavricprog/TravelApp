@@ -26,6 +26,16 @@ public class ExpensesController : ControllerBase
         return Ok(data);
     }
 
+    [HttpPut("{expenseId:int}")]
+    public async Task<ActionResult<ExpenseDto>> Update(int travelPlanId, int expenseId, [FromBody] UpdateExpenseRequest request)
+    {
+        _ = travelPlanId;
+        var (ok, error, data) = await _expenses.UpdateAsync(expenseId, UserId, request);
+        if (!ok)
+            return NotFound(new { message = error });
+        return Ok(data);
+    }
+
     [HttpDelete("{expenseId:int}")]
     public async Task<IActionResult> Delete(int travelPlanId, int expenseId)
     {

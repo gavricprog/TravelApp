@@ -77,7 +77,6 @@ public class TravelPlansController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Creates/replaces a random share token so others can open a read-only view.</summary>
     [HttpPost("{id:int}/share")]
     public async Task<ActionResult<ShareLinkResponse>> RegenerateShare(int id)
     {

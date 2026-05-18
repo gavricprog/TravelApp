@@ -8,7 +8,6 @@ using TravelApp.Api.Models;
 
 namespace TravelApp.Api.UserModule.Services;
 
-/// <summary>Builds a signed JWT with user id, email, and role claims.</summary>
 public class JwtTokenService : IJwtTokenService
 {
     private readonly JwtSettings _jwt;
@@ -20,6 +19,7 @@ public class JwtTokenService : IJwtTokenService
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Name, user.Name),
             new(JwtRegisteredClaimNames.Email, user.Email),
             new(ClaimTypes.Role, user.Role.ToString())
         };

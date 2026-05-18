@@ -18,9 +18,11 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [budget, setBudget] = useState('0');
+  const [notes, setNotes] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -103,7 +105,7 @@ export default function DashboardPage() {
 
   const deleteAdminUser = async (targetUser) => {
     if (targetUser.id === user?.userId) return;
-    if (!window.confirm(`Delete user ${targetUser.email}? This also deletes their travel plans.`)) return;
+    if (!window.confirm(`Delete user ${targetUser.name || targetUser.email}? This also deletes their travel plans.`)) return;
     try {
       await adminService.deleteUser(targetUser.id);
       await loadAdminData();
@@ -137,14 +139,18 @@ export default function DashboardPage() {
     try {
       await travelApi.createTravelPlan({
         title,
+        description: description.trim() || null,
         startDate,
         endDate,
         budget: Number(budget),
+        notes: notes.trim() || null,
       });
       setTitle('');
+      setDescription('');
       setStartDate('');
       setEndDate('');
       setBudget('0');
+      setNotes('');
       await load();
       notifySuccess('Trip created successfully.');
     } catch (err) {
@@ -191,6 +197,7 @@ export default function DashboardPage() {
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
+                    <th className="py-2 pr-3">Name</th>
                     <th className="py-2 pr-3">Email</th>
                     <th className="py-2 pr-3">Role</th>
                     <th className="py-2 text-right">Actions</th>
@@ -201,7 +208,8 @@ export default function DashboardPage() {
                     const isCurrentUser = adminUser.id === user?.userId;
                     return (
                       <tr key={adminUser.id}>
-                        <td className="py-3 pr-3 font-medium text-slate-800">{adminUser.email}</td>
+                        <td className="py-3 pr-3 font-medium text-slate-800">{adminUser.name || '-'}</td>
+                        <td className="py-3 pr-3 text-slate-600">{adminUser.email}</td>
                         <td className="py-3 pr-3">
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
                             {adminUser.role}
@@ -228,7 +236,7 @@ export default function DashboardPage() {
                   })}
                   {adminUsers.length === 0 && (
                     <tr>
-                      <td colSpan="3" className="py-6 text-center text-slate-500">
+                      <td colSpan="4" className="py-6 text-center text-slate-500">
                         No users found.
                       </td>
                     </tr>
@@ -302,6 +310,16 @@ export default function DashboardPage() {
             <label className="field-label">Title</label>
             <input className="field" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} />
           </div>
+          <div>
+            <label className="field-label">Description</label>
+            <textarea
+              className="field min-h-24"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={2000}
+              placeholder="Short description of the travel plan"
+            />
+          </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label className="field-label">Start</label>
@@ -329,6 +347,16 @@ export default function DashboardPage() {
                 required
               />
             </div>
+          </div>
+          <div>
+            <label className="field-label">General notes</label>
+            <textarea
+              className="field min-h-24"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={2000}
+              placeholder="General reminders and notes for this trip"
+            />
           </div>
           <button type="submit" className="btn-primary">
             Create trip
@@ -361,6 +389,7 @@ export default function DashboardPage() {
                   {new Date(p.startDate).toLocaleDateString(undefined, { dateStyle: 'medium' })} →{' '}
                   {new Date(p.endDate).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                 </p>
+                {p.description && <p className="mt-2 line-clamp-2 text-sm text-slate-600">{p.description}</p>}
                 <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                   <div className="rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
                     <span className="text-xs font-medium uppercase text-slate-500">Budget</span>

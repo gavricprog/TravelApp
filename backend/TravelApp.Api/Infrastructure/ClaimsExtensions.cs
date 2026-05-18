@@ -5,7 +5,6 @@ namespace TravelApp.Api.Infrastructure;
 
 public static class ClaimsExtensions
 {
-    /// <summary>Reads the numeric user id we put in JWT "sub" claim.</summary>
     public static int GetUserId(this ClaimsPrincipal user)
     {
         var sub = user.FindFirstValue(JwtRegisteredClaimNames.Sub)

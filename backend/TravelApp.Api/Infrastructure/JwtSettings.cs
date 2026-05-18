@@ -1,6 +1,5 @@
 namespace TravelApp.Api.Infrastructure;
 
-/// <summary>Binds to appsettings.json "Jwt" section.</summary>
 public class JwtSettings
 {
     public string Key { get; set; } = string.Empty;

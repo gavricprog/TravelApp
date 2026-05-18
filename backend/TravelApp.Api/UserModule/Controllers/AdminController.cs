@@ -8,7 +8,6 @@ using TravelApp.Api.Models;
 
 namespace TravelApp.Api.UserModule.Controllers;
 
-/// <summary>Proves ADMIN role is enforced — only users with Role=Admin in JWT can call this.</summary>
 [ApiController]
 [Route("api/admin")]
 [Authorize(Roles = "Admin")]
@@ -40,6 +39,7 @@ public class AdminController : ControllerBase
             .Select(u => new AdminUserDto
             {
                 Id = u.Id,
+                Name = u.Name,
                 Email = u.Email,
                 Role = u.Role.ToString()
             })

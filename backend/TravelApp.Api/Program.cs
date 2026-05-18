@@ -18,28 +18,23 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 
-// EF Core + SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// User module (auth)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-// Travel module (plans, destinations, activities, checklist, share)
 builder.Services.AddScoped<ITravelRepository, TravelRepository>();
 builder.Services.AddScoped<ITravelPlanService, TravelPlanService>();
 builder.Services.AddScoped<ITravelPdfService, TravelPdfService>();
 builder.Services.AddScoped<IQrCodeService, QrCodeService>();
 
-// Finance module (expenses only — keeps "microservice" boundary in folders)
 builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
 
-// JWT bearer validates each [Authorize] request
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -58,7 +53,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// Enums (e.g. ActivityStatus) as readable JSON strings in Swagger + React
 builder.Services.AddControllers().AddJsonOptions(o =>
 {
     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -88,7 +82,6 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// React (Vite) dev server. Vite may use 5174 if 5173 is already occupied.
 builder.Services.AddCors(o =>
 {
     o.AddDefaultPolicy(p =>
@@ -115,7 +108,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Apply EF migrations on startup (creates DB if missing — good for local demos)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();

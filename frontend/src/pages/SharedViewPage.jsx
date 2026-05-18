@@ -101,6 +101,8 @@ export default function SharedViewPage() {
 
         <DestinationsSection
           destinations={editablePlan.destinations}
+          planStartDate={editablePlan.startDate?.slice(0, 10)}
+          planEndDate={editablePlan.endDate?.slice(0, 10)}
           onAdd={(payload) => runSharedMutation(() => travelApi.addSharedDestination(token, payload), 'Destination added.')}
           onUpdate={(id, payload) => runSharedMutation(() => travelApi.updateSharedDestination(token, id, payload), 'Destination updated.')}
           onRemove={(id) => runSharedMutation(() => travelApi.removeSharedDestination(token, id), 'Destination removed.')}
@@ -109,6 +111,8 @@ export default function SharedViewPage() {
 
         <ActivitiesSection
           activities={editablePlan.activities}
+          planStartDate={editablePlan.startDate?.slice(0, 10)}
+          planEndDate={editablePlan.endDate?.slice(0, 10)}
           onAdd={(payload) => runSharedMutation(() => travelApi.addSharedActivity(token, payload), 'Activity added.')}
           onUpdate={(id, payload) => runSharedMutation(() => travelApi.updateSharedActivity(token, id, payload), 'Activity updated.')}
           onRemove={(id) => runSharedMutation(() => travelApi.removeSharedActivity(token, id), 'Activity removed.')}
@@ -118,6 +122,7 @@ export default function SharedViewPage() {
         <ExpensesSection
           expenses={editablePlan.expenses}
           onAdd={(payload) => runSharedMutation(() => travelApi.addSharedExpense(token, payload), 'Expense added.')}
+          onUpdate={(id, payload) => runSharedMutation(() => travelApi.updateSharedExpense(token, id, payload), 'Expense updated.')}
           onRemove={(id) => runSharedMutation(() => travelApi.removeSharedExpense(token, id), 'Expense removed.')}
           onValidationError={showError}
         />
@@ -138,10 +143,12 @@ export default function SharedViewPage() {
         <div className="bg-gradient-to-r from-teal-600 to-cyan-700 px-6 py-8 text-white">
           <p className="text-xs font-semibold uppercase tracking-widest text-teal-100">Shared itinerary · view only</p>
           <h1 className="mt-2 text-3xl font-bold">{data.title}</h1>
+          {data.description && <p className="mt-2 max-w-2xl text-teal-50">{data.description}</p>}
           <p className="mt-2 text-teal-100">
             {new Date(data.startDate).toLocaleDateString(undefined, { dateStyle: 'long' })} →{' '}
             {new Date(data.endDate).toLocaleDateString(undefined, { dateStyle: 'long' })}
           </p>
+          {data.notes && <p className="mt-4 rounded-xl bg-white/10 p-3 text-sm text-teal-50">Notes: {data.notes}</p>}
         </div>
         <div className="grid gap-px bg-slate-100 sm:grid-cols-3">
           <div className="bg-white p-4">
@@ -231,7 +238,14 @@ export default function SharedViewPage() {
               key={item.id}
               className={`rounded-xl border border-slate-100 px-3 py-2 text-sm ${item.isDone ? 'bg-slate-50 text-slate-400 line-through' : 'bg-white text-slate-800'}`}
             >
-              {item.text}
+              <span className="font-medium">{item.text}</span>
+              {(item.reminderDate || item.notes) && (
+                <span className="mt-0.5 block text-xs text-slate-500">
+                  {item.reminderDate && `Reminder: ${new Date(item.reminderDate).toLocaleDateString()}`}
+                  {item.reminderDate && item.notes && ' · '}
+                  {item.notes}
+                </span>
+              )}
             </li>
           ))}
         </ul>

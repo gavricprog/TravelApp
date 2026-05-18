@@ -4,10 +4,6 @@ using TravelApp.Api.UserModule.Repositories;
 
 namespace TravelApp.Api.UserModule.Services;
 
-/// <summary>
-/// UserService boundary for authentication and user identity.
-/// This service is designed to be deployed as a separate Service Fabric service.
-/// </summary>
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _users;
@@ -28,6 +24,7 @@ public class AuthService : IAuthService
 
         var user = new User
         {
+            Name = request.Name.Trim(),
             Email = normalizedEmail,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = UserRole.User
@@ -39,6 +36,7 @@ public class AuthService : IAuthService
         {
             Token = _jwt.CreateToken(user),
             UserId = user.Id,
+            Name = user.Name,
             Email = user.Email,
             Role = user.Role.ToString()
         };
@@ -57,6 +55,7 @@ public class AuthService : IAuthService
         {
             Token = _jwt.CreateToken(user),
             UserId = user.Id,
+            Name = user.Name,
             Email = user.Email,
             Role = user.Role.ToString()
         };

@@ -7,13 +7,13 @@ public class TravelPlan
     public User User { get; set; } = null!;
 
     public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
 
-    /// <summary>Trip budget — must be &gt;= 0 (validated in service layer).</summary>
     public decimal Budget { get; set; }
+    public string? Notes { get; set; }
 
-    /// <summary>Legacy view token kept for older database rows; new sharing uses ShareTokens.</summary>
     public string? ShareToken { get; set; }
 
     public ICollection<Destination> Destinations { get; set; } = new List<Destination>();

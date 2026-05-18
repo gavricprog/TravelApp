@@ -1,14 +1,14 @@
 # Travel Planning Web Application
 
-Student-friendly full stack app: **ASP.NET Core 8 Web API** + **SQL Server (EF Core)** + **React (Vite)** with **JWT** auth and a simple **USER / ADMIN** role claim (new accounts register as `USER`).
+Full stack travel planning app: **ASP.NET Core 8 Web API** + **SQL Server (EF Core)** + **React (Vite)** with **JWT** auth and a **USER / ADMIN** role claim.
 
-Architecture stays intentionally small and clear: **Controllers → Services → Repositories**, with three logical service boundaries on the backend:
+Backend architecture follows **Controllers → Services → Repositories**, with three service boundaries:
 
 - `UserModule` / **UserService** — authentication, JWT, users, admin role checks
 - `TravelModule` / **TravelService** — plans, destinations, activities, checklist, sharing, PDF/QR features
 - `FinanceModule` / **FinanceService** — expenses and finance operations
 
-The current backend is a **modular monolith with microservice-ready boundaries**. It is not a full Microsoft Service Fabric deployment yet, but each backend service boundary is documented and designed so it can be moved into a separate Service Fabric service later.
+The ASP.NET Core API exposes the `/api/...` routes used by the React app. The repository also includes a **Microsoft Service Fabric layer** under `backend/ServiceFabric` with service manifests for `UserService`, `TravelService`, and `FinanceService`, including stateless and stateful service definitions.
 
 ---
 
@@ -17,6 +17,7 @@ The current backend is a **modular monolith with microservice-ready boundaries**
 - [.NET 8 SDK](https://dotnet.microsoft.com/download)
 - [Node.js 18+](https://nodejs.org/) (for the React app)
 - **SQL Server** — default connection string uses **LocalDB** (installed with Visual Studio / Build Tools on Windows)
+- Optional for Service Fabric packaging: Visual Studio with the Microsoft Service Fabric tools/workload and a local Service Fabric cluster
 
 ---
 
@@ -27,7 +28,7 @@ Path: `backend/TravelApp.Api`
 ### Configuration
 
 - Connection string: `appsettings.json` → `ConnectionStrings:DefaultConnection`
-- JWT: `Jwt` section — change `Key` to a long random string (≥ 32 characters) for anything beyond local class demos
+- JWT: `Jwt` section
 
 ### Run
 
@@ -61,12 +62,12 @@ Entities live in `backend/TravelApp.Api/Models/`:
 
 | Model          | Purpose |
 |----------------|---------|
-| `User`         | Email, password hash, `UserRole` |
-| `TravelPlan`   | Title, dates, budget, optional `ShareToken` |
+| `User`         | Name, email, password hash, `UserRole` |
+| `TravelPlan`   | Title, description, dates, budget, notes, optional `ShareToken` |
 | `Destination`  | Places attached to a plan |
 | `Activity`     | Items grouped by `DayDate` |
 | `Expense`      | Money lines (Finance module) |
-| `ChecklistItem`| Simple todos per plan |
+| `ChecklistItem`| Checklist items and reminders per plan |
 
 **Validation rules (also enforced in `TravelPlanService`):**
 
@@ -75,11 +76,25 @@ Entities live in `backend/TravelApp.Api/Models/`:
 
 ---
 
-## 3. Frontend (React)
+## 3. Service Fabric layer
+
+Path: `backend/ServiceFabric`
+
+The Service Fabric package contains three service boundaries:
+
+- `UserStatelessService` - auth, JWT, users, roles, and admin account operations
+- `TravelStatefulService` - travel plans, destinations, activities, checklist, sharing, QR, and PDF reports
+- `FinanceStatelessService` - expenses, categories, totals, and budget operations
+
+The application manifest is in `backend/ServiceFabric/ApplicationPackageRoot/ApplicationManifest.xml`. Service manifests are split into `UserServicePkg`, `TravelServicePkg`, and `FinanceServicePkg`. If Service Fabric tooling is installed, open the Service Fabric project in Visual Studio and package/deploy it to the local cluster. The ASP.NET Core API can still be run directly as shown above.
+
+---
+
+## 4. Frontend (React)
 
 Path: `frontend`
 
-API calls are **only** in `src/api/*.js` (not inside components), as requested. The API base URL is configured through Vite environment variables.
+API calls are in `src/api/*.js`. The API base URL is configured through Vite environment variables.
 
 Create or update `frontend/.env`:
 
@@ -114,7 +129,7 @@ Open `http://localhost:5173`
 
 ---
 
-## 4. Main API routes (cheat sheet)
+## 5. Main API routes (cheat sheet)
 
 | Area | Method | Route |
 |------|--------|--------|
@@ -126,15 +141,15 @@ Open `http://localhost:5173`
 | Destinations | POST/DELETE | `/api/travel-plans/{id}/destinations`, `/api/travel-plans/destinations/{id}` |
 | Activities | POST/DELETE | `/api/travel-plans/{id}/activities`, `/api/travel-plans/activities/{id}` |
 | Checklist | POST/PATCH/DELETE | `/api/travel-plans/{id}/checklist`, `/api/travel-plans/checklist/{itemId}` |
-| Expenses | POST/DELETE | `/api/travel-plans/{id}/expenses`, `/api/travel-plans/{id}/expenses/{expenseId}` |
+| Expenses | POST/PUT/DELETE | `/api/travel-plans/{id}/expenses`, `/api/travel-plans/{id}/expenses/{expenseId}` |
 
 Swagger: click **Authorize** and paste `Bearer {your_jwt}`.
 
 ---
 
-## ADMIN role (optional)
+## Admin Role
 
-Registration creates **USER** only. To demo **ADMIN**, update SQL (SSMS / `sqlcmd`) after a user exists — `Role` is `0` = User, `1` = Admin:
+Registration creates **USER** accounts. To create an **ADMIN**, update SQL after a user exists. `Role` is `0` = User, `1` = Admin:
 
 ```sql
 UPDATE Users SET Role = 1 WHERE Email = 'you@school.edu';
@@ -142,9 +157,9 @@ UPDATE Users SET Role = 1 WHERE Email = 'you@school.edu';
 
 The next login JWT will include the `Admin` role claim.
 
-**Admin API (demo):** `GET /api/admin/stats` — returns total users and travel plans; requires a JWT whose role is `Admin`. The dashboard shows a yellow **Admin overview** bar when you are logged in as admin.
+**Admin API:** `GET /api/admin/stats` returns total users and travel plans. It requires a JWT whose role is `Admin`.
 
-After pulling changes, run the API once so new EF migrations apply (`ActivityExpenseAdminFeatures` adds activity fields + expense category).
+Run the API after schema changes so EF migrations can apply.
 
 ---
 
@@ -159,10 +174,17 @@ Travel app/
     Models/               # EF entities
     DTOs/                 # Request/response shapes
     Infrastructure/       # JWT settings, claim helper
-    UserModule/           # UserService boundary
-    TravelModule/         # TravelService boundary
-    FinanceModule/        # FinanceService boundary
+    UserModule/           # User service boundary
+    TravelModule/         # Travel service boundary
+    FinanceModule/        # Finance service boundary
     Migrations/           # EF migrations
+  backend/ServiceFabric/
+    ApplicationPackageRoot/
+      ApplicationManifest.xml
+      UserServicePkg/     # Stateless service manifest
+      TravelServicePkg/   # Stateful service manifest
+      FinanceServicePkg/  # Stateless service manifest
+    src/                  # Service Fabric hosts
   frontend/
     src/
       api/                # axios + API functions
@@ -177,11 +199,11 @@ Travel app/
 
 ---
 
-## Architecture and academic deliverables
+## Architecture
 
 - System architecture: `docs/architecture.md`
 - Use case diagram: `docs/use-case.md`
-- Service Fabric migration note: the current implementation keeps User, Travel, and Finance as explicit logical service boundaries. A future Service Fabric version should split those modules into separate deployable services and add the required stateless/stateful Service Fabric hosts.
+- Service Fabric layer: `backend/ServiceFabric` contains the application manifest, service manifests, and stateless/stateful hosts for User, Travel, and Finance services.
 
 ---
 
